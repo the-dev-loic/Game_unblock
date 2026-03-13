@@ -1,0 +1,529 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <title>Auto Farmer+</title>
+
+    <style>
+
+        body{
+            font-family:Arial;
+            background:#2e7d32;
+            color:white;
+            margin:0;
+            text-align:center;
+        }
+
+        #menu{
+            background:#1b5e20;
+            padding:10px;
+            display:flex;
+            justify-content:space-between;
+        }
+
+        button{
+            padding:6px 12px;
+            margin:4px;
+        }
+
+        .panel{
+            display:none;
+            background:#263238;
+            padding:15px;
+        }
+
+        #game{
+            display:grid;
+            grid-template-columns: repeat(8,60px);
+            grid-gap:4px;
+            justify-content:center;
+            margin:20px;
+        }
+
+        .tile{
+            width:60px;
+            height:60px;
+            background:#6d4c41;
+            display:flex;
+            align-items:center;
+            justify-content:center;
+            font-size:22px;
+        }
+
+        .farmer{
+            background:#fdd835;
+        }
+
+        textarea{
+            width:420px;
+            height:180px;
+        }
+
+    </style>
+</head>
+
+<body>
+
+<div id="menu">
+
+    <div>🌾 Auto Farmer+</div>
+
+    <div>
+        <button onclick="toggle('wiki')">📚 Wiki</button>
+        <button onclick="toggle('shop')">🛒 Shop</button>
+        <button onclick="toggle('upgrade')">⬆️ Upgrade</button>
+        <button onclick="sellAll()">💰 Sell</button>
+    </div>
+
+</div>
+
+<div id="wiki" class="panel">
+
+    <h3>Commandes</h3>
+
+    <pre>
+
+move("north")
+move("south")
+move("east")
+move("west")
+
+plant("wheat")
+plant("carrot")
+plant("corn")
+
+harvest()
+
+for i in range(5){
+move("east")
+}
+
+if canHarvest(){
+harvest()
+}
+
+while canHarvest(){
+harvest()
+}
+
+</pre>
+
+</div>
+
+<div id="shop" class="panel">
+
+    <h3>Shop</h3>
+
+    <button onclick="buy('wheat')">Buy Wheat Seed ($2)</button><br>
+    <button onclick="buy('carrot')">Buy Carrot Seed ($3)</button><br>
+    <button onclick="buy('corn')">Buy Corn Seed ($5)</button>
+
+</div>
+
+<div id="upgrade" class="panel">
+
+    <h3>Upgrades</h3>
+
+    <button onclick="upgradeWheat()">Upgrade Wheat Value ($50)</button>
+
+    <br><br>
+
+    Current Wheat Price :
+    <span id="wheatPrice"></span>
+
+</div>
+
+<h2>Farm</h2>
+
+<div id="game"></div>
+
+<div>
+
+    💰 Money: <span id="money"></span>
+
+    <br><br>
+
+    Inventory →
+
+    🌾 Wheat: <span id="wheat"></span>
+    🥕 Carrot: <span id="carrot"></span>
+    🌽 Corn: <span id="corn"></span>
+
+    <br><br>
+
+    Seeds →
+
+    🌾 <span id="sw"></span>
+    🥕 <span id="sc"></span>
+    🌽 <span id="sco"></span>
+
+</div>
+
+<h3>Program</h3>
+
+<textarea id="code">
+
+for i in range(8){
+
+move("east")
+
+plant("wheat")
+
+if canHarvest(){
+harvest()
+}
+
+}
+
+</textarea>
+
+<br>
+
+<button onclick="runCode()">▶ Run</button>
+
+<script>
+
+    /* CONFIG */
+
+    const crops={
+        wheat:{grow:3,price:5,emoji:"🌾"},
+        carrot:{grow:4,price:7,emoji:"🥕"},
+        corn:{grow:5,price:10,emoji:"🌽"}
+    }
+
+    const size=8
+
+    /* GAME STATE */
+
+    let farm=[]
+    let farmer={x:0,y:0}
+
+    let inventory={wheat:0,carrot:0,corn:0}
+    let seeds={wheat:3,carrot:2,corn:1}
+
+    let upgrades={wheatValue:0}
+
+    let money=20
+
+    /* INIT */
+
+    function init(){
+
+        const game=document.getElementById("game")
+        game.innerHTML=""
+
+        for(let y=0;y<size;y++){
+
+            farm[y]=[]
+
+            for(let x=0;x<size;x++){
+
+                farm[y][x]=null
+
+                let tile=document.createElement("div")
+                tile.className="tile"
+                tile.id=`${x}_${y}`
+
+                game.appendChild(tile)
+
+            }
+
+        }
+
+        loadGame()
+        draw()
+
+    }
+
+    /* DRAW */
+
+    function draw(){
+
+        for(let y=0;y<size;y++){
+            for(let x=0;x<size;x++){
+
+                let tile=document.getElementById(`${x}_${y}`)
+                tile.className="tile"
+                tile.innerHTML=""
+
+                let cell=farm[y][x]
+
+                /* afficher culture */
+
+                if(cell){
+                    tile.innerHTML=crops[cell.type].emoji
+                }
+
+                /* afficher fermier */
+
+                if(farmer.x==x && farmer.y==y){
+                    tile.classList.add("farmer")
+                    tile.innerHTML="👨‍🌾"
+                }
+
+            }
+        }
+
+        /* UI */
+
+        document.getElementById("money").innerText=money
+
+        document.getElementById("wheat").innerText=inventory.wheat
+        document.getElementById("carrot").innerText=inventory.carrot
+        document.getElementById("corn").innerText=inventory.corn
+
+        document.getElementById("sw").innerText=seeds.wheat
+        document.getElementById("sc").innerText=seeds.carrot
+        document.getElementById("sco").innerText=seeds.corn
+
+        document.getElementById("wheatPrice").innerText =
+            crops.wheat.price + upgrades.wheatValue
+
+    }
+
+    /* GROWTH */
+
+    function growTick(){
+
+        for(let y=0;y<size;y++)
+            for(let x=0;x<size;x++){
+
+                let c=farm[y][x]
+
+                if(c){
+                    c.age++
+                }
+
+            }
+
+        draw()
+        saveGame()
+
+    }
+
+    setInterval(growTick,3000)
+
+    /* MOVEMENT */
+
+    function move(dir){
+
+        if(dir=="east" && farmer.x<size-1) farmer.x++
+        if(dir=="west" && farmer.x>0) farmer.x--
+
+        if(dir=="south" && farmer.y<size-1) farmer.y++
+        if(dir=="north" && farmer.y>0) farmer.y--
+
+    }
+
+    /* FARM ACTIONS */
+
+    function plant(type){
+
+        if(!farm[farmer.y][farmer.x] && seeds[type]>0){
+
+            farm[farmer.y][farmer.x]={type:type,age:0}
+            seeds[type]--
+
+        }
+
+    }
+
+    function canHarvest(){
+
+        let c=farm[farmer.y][farmer.x]
+
+        if(!c) return false
+
+        return c.age>=crops[c.type].grow
+
+    }
+
+    function harvest(){
+
+        let c=farm[farmer.y][farmer.x]
+
+        if(c && canHarvest()){
+
+            inventory[c.type]++
+            farm[farmer.y][farmer.x]=null
+
+        }
+
+    }
+
+    /* SHOP */
+
+    function buy(type){
+
+        const prices={wheat:2,carrot:3,corn:5}
+
+        if(money>=prices[type]){
+
+            money-=prices[type]
+            seeds[type]++
+
+            draw()
+
+        }
+
+    }
+
+    /* SELL */
+
+    function sellAll(){
+
+        for(let c in inventory){
+
+            let value=crops[c].price
+
+            if(c=="wheat")
+                value+=upgrades.wheatValue
+
+            money+=inventory[c]*value
+            inventory[c]=0
+
+        }
+
+        draw()
+
+    }
+
+    /* UPGRADES */
+
+    function upgradeWheat(){
+
+        if(money>=50){
+
+            money-=50
+            upgrades.wheatValue+=2
+
+            draw()
+
+        }
+
+    }
+
+    /* SCRIPT PARSER */
+
+    function parse(code){
+
+// FOR
+
+        code=code.replace(/for i in range\((\d+)\)\{([\s\S]*?)\}/g,(m,n,block)=>{
+
+            let r=""
+
+            for(let i=0;i<n;i++)
+                r+=block
+
+            return r
+
+        })
+
+// IF
+
+        code=code.replace(/if canHarvest\(\)\{([\s\S]*?)\}/g,(m,block)=>{
+
+            if(canHarvest()) return block
+            return ""
+
+        })
+
+// WHILE
+
+        code=code.replace(/while canHarvest\(\)\{([\s\S]*?)\}/g,(m,block)=>{
+
+            let r=""
+
+            while(canHarvest()){
+                r+=block
+            }
+
+            return r
+
+        })
+
+        return code
+
+    }
+
+    /* RUN PROGRAM */
+
+    async function runCode(){
+
+        let raw=document.getElementById("code").value
+
+        let code=parse(raw).split("\n")
+
+        for(let line of code){
+
+            line=line.trim()
+
+            if(line.startsWith("move")){
+
+                let d=line.match(/"(.*?)"/)[1]
+                move(d)
+
+            }
+
+            if(line.startsWith("plant")){
+
+                let t=line.match(/"(.*?)"/)[1]
+                plant(t)
+
+            }
+
+            if(line=="harvest()") harvest()
+
+            draw()
+
+            await new Promise(r=>setTimeout(r,400))
+
+        }
+
+    }
+
+    /* UI */
+
+    function toggle(id){
+
+        let p=document.getElementById(id)
+
+        p.style.display=p.style.display=="block"
+            ?"none":"block"
+
+    }
+
+    /* SAVE */
+
+    function saveGame(){
+
+        localStorage.setItem("farmSave",JSON.stringify({
+            farm,farmer,inventory,seeds,money,upgrades
+        }))
+
+    }
+
+    function loadGame(){
+
+        let s=localStorage.getItem("farmSave")
+
+        if(!s) return
+
+        let d=JSON.parse(s)
+
+        farm=d.farm
+        farmer=d.farmer
+        inventory=d.inventory
+        seeds=d.seeds
+        money=d.money
+        upgrades=d.upgrades
+
+    }
+
+    init()
+
+</script>
+
+</body>
+</html>
