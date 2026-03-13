@@ -146,7 +146,7 @@
         }
     }
 
-    // Contrôles
+    // Contrôles d
     controls=new PointerLockControls(camera,document.body);
     controls.addEventListener('lock',()=>{ isGameActive=true; document.getElementById('menu-overlay').style.display='none'; });
     controls.addEventListener('unlock',()=>{ if(health>0){isGameActive=false;document.getElementById('menu-overlay').style.display='flex';} });
