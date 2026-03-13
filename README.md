@@ -22,5 +22,5 @@ Un menu interactif pour accéder facilement à différents jeux HTML/CSS/JS.
 
 ```bash
 git clone https://github.com/ton-utilisateur/menu-jeux.git
-
-1. Clonez le projet :
+```
+2. Lancez le main.html :
