@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <title>Ultra Management Simulator V5</title>
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        canvas{cursor:grab;background:#000;}
+    </style>
+</head>
+<body class="bg-gray-900 text-white">
+
+<div id="app" class="p-4">
+
+    <h1 class="text-3xl font-bold mb-4">Ultra Management Simulator V5</h1>
+
+    <div class="grid grid-cols-4 gap-4">
+
+        <!-- Carte -->
+        <div class="col-span-3 bg-gray-800 p-2 rounded relative">
+            <canvas ref="map" width="1200" height="700"
+                    @mousedown="startDrag"
+                    @mouseup="stopDrag"
+                    @mousemove="drag"
+                    @click="clickMap">
+            </canvas>
+        </div>
+
+        <!-- Panneau -->
+        <div class="bg-gray-800 p-4 rounded overflow-y-auto" style="max-height:700px;">
+            <h2 class="text-xl mb-2">Empire</h2>
+            <div>Tick : {{tick}}</div>
+            <div>Argent : {{Math.floor(resources.money)}}</div>
+            <div>Nourriture : {{Math.floor(resources.food)}}</div>
+            <div>Fer : {{Math.floor(resources.iron)}}</div>
+            <div>Énergie : {{Math.floor(resources.energy)}}</div>
+            <hr class="my-2">
+
+            <h2 class="text-xl">Population</h2>
+            <div>{{population}}</div>
+            <hr class="my-2">
+
+            <h2 class="text-xl">Armée</h2>
+            <div>Soldats : {{army}}</div>
+            <button class="bg-red-600 px-2 py-1 mt-2" @click="recruit">Recruter 50 soldats</button>
+            <hr class="my-2">
+
+            <div v-if="selectedCity">
+                <h2 class="text-xl">Ville sélectionnée</h2>
+                <div>{{selectedCity.name}}</div>
+                <div>Population : {{Math.floor(selectedCity.population)}}</div>
+                <div>Richesse : {{Math.floor(selectedCity.wealth)}}</div>
+                <div>Fermes : {{selectedCity.farms}} | Usines : {{selectedCity.factories}}</div>
+                <button class="bg-green-600 px-2 py-1 mt-2" @click="buildFarm">Construire Ferme</button>
+                <button class="bg-green-600 px-2 py-1 mt-2" @click="buildFactory">Construire Usine</button>
+                <button class="bg-blue-600 px-2 py-1 mt-2" @click="upgradeCity">Améliorer Ville</button>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+<script>
+    const {createApp} = Vue;
+
+    createApp({
+        data(){
+            return{
+                tick:0,
+                camera:{x:0,y:0,zoom:1},
+                dragging:false,
+                lastMouse:null,
+                resources:{money:5000,food:2000,iron:1000,energy:800},
+                population:1000,
+                army:100,
+                cities:[],
+                roads:[],
+                selectedCity:null,
+                events:[],
+                techs:[
+                    {name:"Automation",done:false},
+                    {name:"AI Economy",done:false},
+                    {name:"Fusion",done:false},
+                    {name:"Nanotech",done:false}
+                ]
+            };
+        },
+        methods:{
+
+// Génération carte et villes
+            generateWorld(){
+                let names=["Neo","Alpha","Nova","Orion","Helios","Atlas","Vega","Astra","Luna","Titan","Eos","Terra","Gaia","Solaris","Zenith"];
+                for(let i=0;i<20;i++){
+                    this.cities.push({
+                        name:names[i],
+                        x:Math.random()*3800,
+                        y:Math.random()*2300,
+                        population:Math.random()*300+200,
+                        wealth:Math.random()*400,
+                        farms:Math.floor(Math.random()*2),
+                        factories:Math.floor(Math.random()*2),
+                        ai:true
+                    });
+                }
+                this.connectCities();
+            },
+
+            connectCities(){
+                for(let i=0;i<this.cities.length;i++){
+                    let a=this.cities[i];
+                    let b=this.cities[Math.floor(Math.random()*this.cities.length)];
+                    if(a!==b){
+                        this.roads.push({a,b});
+                    }
+                }
+            },
+
+            draw(){
+                const canvas=this.$refs.map;
+                const ctx=canvas.getContext("2d");
+                ctx.clearRect(0,0,canvas.width,canvas.height);
+                ctx.save();
+                ctx.scale(this.camera.zoom,this.camera.zoom);
+                ctx.translate(-this.camera.x,-this.camera.y);
+                this.drawTerrain(ctx);
+                this.roads.forEach(r=>{
+                    ctx.strokeStyle="#555";
+                    ctx.beginPath();
+                    ctx.moveTo(r.a.x,r.a.y);
+                    ctx.lineTo(r.b.x,r.b.y);
+                    ctx.stroke();
+                });
+                this.cities.forEach(city=>{
+                    ctx.fillStyle="orange";
+                    ctx.beginPath();
+                    ctx.arc(city.x,city.y,10,0,Math.PI*2);
+                    ctx.fill();
+                    ctx.fillStyle="white";
+                    ctx.fillText(city.name,city.x+12,city.y);
+                });
+                ctx.restore();
+            },
+
+            drawTerrain(ctx){
+                for(let x=0;x<4000;x+=50){
+                    for(let y=0;y<2500;y+=50){
+                        let v=Math.random();
+                        if(v<0.2) ctx.fillStyle="#1e3a8a"; // eau
+                        else if(v<0.5) ctx.fillStyle="#065f46"; // forêt
+                        else ctx.fillStyle="#92400e"; // montagne
+                        ctx.fillRect(x,y,50,50);
+                    }
+                }
+            },
+
+            simulateCities(){
+                this.cities.forEach(city=>{
+                    city.population+=Math.random()*0.5;
+                    let foodProd=city.farms*10;
+                    let industry=city.factories*15;
+                    this.resources.food+=foodProd;
+                    if(this.resources.iron>2){
+                        this.resources.iron-=2;
+                        this.resources.money+=industry;
+                    }
+                    city.wealth+=industry*0.2;
+// IA de base
+                    if(city.ai && city.wealth>300 && Math.random()<0.05) city.farms++;
+                    if(city.ai && city.wealth>400 && Math.random()<0.03) city.factories++;
+                });
+            },
+
+            simulateEconomy(){
+                let wealth=this.cities.reduce((a,c)=>a+c.wealth,0);
+                this.resources.money+=wealth*0.01;
+            },
+
+            simulatePopulation(){
+                this.population=this.cities.reduce((a,c)=>a+c.population,0);
+            },
+
+            simulateEvents(){
+                if(Math.random()<0.01){
+                    let c=this.cities[Math.floor(Math.random()*this.cities.length)];
+                    c.population*=0.9; // catastrophe
+                    this.events.unshift("Catastrophe à "+c.name+" !");
+                }
+            },
+
+            clickMap(e){
+                const rect=this.$refs.map.getBoundingClientRect();
+                let x=(e.clientX-rect.left)/this.camera.zoom+this.camera.x;
+                let y=(e.clientY-rect.top)/this.camera.zoom+this.camera.y;
+                this.selectedCity=null;
+                this.cities.forEach(city=>{
+                    let dx=city.x-x;
+                    let dy=city.y-y;
+                    if(Math.sqrt(dx*dx+dy*dy)<12){this.selectedCity=city;}
+                });
+            },
+
+            startDrag(e){this.dragging=true;this.lastMouse={x:e.clientX,y:e.clientY};},
+            stopDrag(){this.dragging=false;},
+            drag(e){
+                if(!this.dragging) return;
+                let dx=(e.clientX-this.lastMouse.x)/this.camera.zoom;
+                let dy=(e.clientY-this.lastMouse.y)/this.camera.zoom;
+                this.camera.x-=dx;
+                this.camera.y-=dy;
+                this.lastMouse={x:e.clientX,y:e.clientY};
+            },
+
+            buildFarm(){if(!this.selectedCity) return;if(this.resources.money>100){this.resources.money-=100;this.selectedCity.farms++;}},
+            buildFactory(){if(!this.selectedCity) return;if(this.resources.money>200){this.resources.money-=200;this.selectedCity.factories++;}},
+            upgradeCity(){if(!this.selectedCity) return;if(this.resources.money>500){this.resources.money-=500;this.selectedCity.population+=50;this.selectedCity.wealth+=100;}},
+            recruit(){if(this.resources.money>200){this.resources.money-=200;this.army+=50;}},
+
+            gameTick(){
+                this.tick++;
+                this.simulateCities();
+                this.simulateEconomy();
+                this.simulatePopulation();
+                this.simulateEvents();
+                this.draw();
+            }
+
+        },
+        mounted(){
+            this.generateWorld();
+            this.draw();
+            setInterval(this.gameTick,1000);
+        }
+    }).mount("#app");
+</script>
+
+</body>
+</html>

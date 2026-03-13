@@ -1,0 +1,913 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Casino Royal - Tous les Jeux</title>
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        .neon-text { text-shadow: 0 0 10px rgba(168, 85, 247, 0.7), 0 0 20px rgba(168, 85, 247, 0.5); }
+        .neon-orange { text-shadow: 0 0 10px rgba(251, 146, 60, 0.8), 0 0 25px rgba(251, 146, 60, 0.5); }
+        .slot-reel { transition: transform 0.1s; }
+        .blur-spin { animation: blur 0.1s infinite; }
+        @keyframes blur {
+            0% { filter: blur(0px); transform: translateY(0); }
+            50% { filter: blur(2px); transform: translateY(-2px); }
+            100% { filter: blur(0px); transform: translateY(0); }
+        }
+        .card-hover:hover { transform: translateY(-5px); box-shadow: 0 10px 30px -5px rgba(168, 85, 247, 0.4); }
+        .card-flip { animation: flip 0.6s ease-in-out; }
+        @keyframes flip {
+            0% { transform: rotateY(0deg); }
+            50% { transform: rotateY(90deg); }
+            100% { transform: rotateY(0deg); }
+        }
+        .tile-reveal { animation: reveal 0.3s ease-out; }
+        @keyframes reveal {
+            0% { transform: scale(0.8); opacity: 0; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+        .pulse-win { animation: pulse-win 0.5s ease-in-out infinite; }
+        @keyframes pulse-win {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+        }
+        .fade-enter-active, .fade-leave-active { transition: opacity 0.3s ease; }
+        .fade-enter-from, .fade-leave-to { opacity: 0; }
+
+        /* === CHICKEN ROAD === */
+        .road-lane {
+            position: relative;
+            overflow: hidden;
+        }
+        .car {
+            position: absolute;
+            font-size: 1.8rem;
+            top: 50%;
+            transform: translateY(-50%);
+            transition: none;
+            filter: drop-shadow(0 0 6px rgba(255,100,0,0.6));
+        }
+        .car-left  { animation: drive-left  linear infinite; }
+        .car-right { animation: drive-right linear infinite; }
+        @keyframes drive-left {
+            from { left: 105%; }
+            to   { left: -15%; }
+        }
+        @keyframes drive-right {
+            from { left: -15%; }
+            to   { left: 105%; }
+        }
+
+        .chicken {
+            font-size: 2.8rem;
+            transition: top 0.35s cubic-bezier(.4,1.6,.6,1);
+            position: absolute;
+            left: 50%;
+            transform: translateX(-50%);
+            filter: drop-shadow(0 4px 8px rgba(0,0,0,0.5));
+            z-index: 20;
+        }
+        .chicken-squish {
+            animation: squish 0.4s ease-out forwards;
+        }
+        @keyframes squish {
+            0%   { transform: translateX(-50%) scaleY(1) scaleX(1); }
+            30%  { transform: translateX(-50%) scaleY(0.3) scaleX(1.8); }
+            60%  { transform: translateX(-50%) scaleY(0.15) scaleX(2.1); opacity: 0.7; }
+            100% { transform: translateX(-50%) scaleY(0) scaleX(2.5); opacity: 0; }
+        }
+        .chicken-win { animation: chicken-dance 0.5s ease-in-out infinite; }
+        @keyframes chicken-dance {
+            0%, 100% { transform: translateX(-50%) rotate(-10deg) scale(1.1); }
+            50%       { transform: translateX(-50%) rotate(10deg)  scale(1.2); }
+        }
+
+        .road-safe {
+            background: repeating-linear-gradient(
+                    90deg,
+                    #15803d 0px, #15803d 20px,
+                    #166534 20px, #166534 40px
+            );
+        }
+        .road-danger {
+            background: linear-gradient(180deg, #374151 0%, #1f2937 50%, #374151 100%);
+            border-top: 3px solid #fbbf24;
+            border-bottom: 3px solid #fbbf24;
+        }
+        .road-finish {
+            background: repeating-linear-gradient(
+                    45deg,
+                    #fbbf24 0px, #fbbf24 10px,
+                    #1f2937 10px, #1f2937 20px
+            );
+        }
+
+        .lane-dashes::after {
+            content: '';
+            position: absolute;
+            left: 0; right: 0;
+            top: 50%;
+            transform: translateY(-50%);
+            height: 3px;
+            background: repeating-linear-gradient(
+                    90deg,
+                    #d1d5db 0px, #d1d5db 30px,
+                    transparent 30px, transparent 60px
+            );
+            opacity: 0.4;
+        }
+
+        .multiplier-bar {
+            background: linear-gradient(90deg, #16a34a, #eab308, #dc2626);
+            border-radius: 9999px;
+            transition: width 0.3s ease;
+        }
+
+        .glow-green { box-shadow: 0 0 20px rgba(34,197,94,0.5), 0 0 40px rgba(34,197,94,0.2); }
+        .glow-red   { box-shadow: 0 0 20px rgba(239,68,68,0.5), 0 0 40px rgba(239,68,68,0.2); }
+        .glow-orange { box-shadow: 0 0 20px rgba(251,146,60,0.5), 0 0 40px rgba(251,146,60,0.2); }
+
+        .road-container {
+            position: relative;
+            height: 480px;
+            overflow: hidden;
+            border-radius: 1rem;
+            border: 2px solid rgba(251,146,60,0.3);
+        }
+    </style>
+</head>
+<body class="bg-gray-900 text-white overflow-x-hidden">
+
+<div id="app" class="relative min-h-screen">
+    <!-- Background -->
+    <div class="fixed inset-0 z-0">
+        <img src="https://image.qwenlm.ai/public_source/b1228ef7-0bc5-44c8-8085-37d25c7ddf46/1f06ab945-cf2a-402f-bfbd-f8869cc4090f.png" alt="Casino Background" class="w-full h-full object-cover opacity-40">
+        <div class="absolute inset-0 bg-gradient-to-b from-gray-900/80 via-gray-900/60 to-gray-900"></div>
+    </div>
+
+    <!-- Navbar -->
+    <nav class="relative z-10 container mx-auto px-6 py-6 flex justify-between items-center">
+        <button @click="currentPage = 'home'" class="text-2xl font-bold text-purple-400 neon-text tracking-wider hover:text-purple-300 transition">
+            CASINO<span class="text-white">ROYAL</span>
+        </button>
+        <div class="hidden md:flex space-x-8 text-sm font-semibold text-gray-300">
+            <button @click="currentPage = 'home'"          :class="currentPage === 'home'          ? 'text-purple-400' : 'hover:text-purple-400'" class="transition">Accueil</button>
+            <button @click="currentPage = 'chicken-road'" :class="currentPage === 'chicken-road' ? 'text-orange-400' : 'hover:text-orange-400'" class="transition">🐔 Chicken Road</button>
+            <button @click="currentPage = 'diamond-mines'" :class="currentPage === 'diamond-mines' ? 'text-blue-400'   : 'hover:text-blue-400'"   class="transition">Diamond Mines</button>
+            <button @click="currentPage = 'blackjack'"     :class="currentPage === 'blackjack'     ? 'text-green-400'  : 'hover:text-green-400'"  class="transition">Blackjack</button>
+        </div>
+        <div class="flex items-center gap-4">
+            <div class="bg-gray-800/80 backdrop-blur px-4 py-2 rounded-full border border-purple-500/30">
+                <span class="text-gray-400 text-sm">Solde: </span>
+                <span class="text-green-400 font-bold">{{ balance }} €</span>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="relative z-10 container mx-auto px-6 py-8">
+
+        <!-- HOME PAGE -->
+        <transition name="fade" mode="out-in">
+            <div v-if="currentPage === 'home'" key="home" class="flex flex-col items-center">
+                <section class="w-full max-w-4xl mb-16 text-center">
+                    <h1 class="text-5xl md:text-7xl font-extrabold mb-4 text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-400 neon-text">
+                        Tentez votre chance
+                    </h1>
+                    <p class="text-gray-400 text-lg mb-12 max-w-2xl mx-auto">
+                        Bienvenue sur la plateforme de jeu ultime. Essayez notre bandit manchot ou explorez nos autres tables.
+                    </p>
+
+                    <!-- Slot Machine -->
+                    <div class="bg-gray-800/80 backdrop-blur-md border border-purple-500/30 rounded-3xl p-8 shadow-2xl max-w-lg mx-auto relative overflow-hidden">
+                        <div class="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-purple-500 via-pink-500 to-purple-500"></div>
+                        <div class="flex justify-center space-x-4 mb-8 bg-black/50 p-6 rounded-xl border border-gray-700">
+                            <div v-for="(reel, index) in slotReels" :key="index"
+                                 class="w-20 h-24 bg-white rounded-lg flex items-center justify-center text-5xl shadow-inner overflow-hidden relative">
+                                <span :class="{ 'blur-spin': isSlotSpinning }">{{ reel.symbol }}</span>
+                            </div>
+                        </div>
+                        <div class="flex justify-between items-center">
+                            <div class="text-left">
+                                <p class="text-xs text-gray-400 uppercase tracking-widest">Dernier Gain</p>
+                                <p class="text-xl font-bold" :class="slotWin ? 'text-green-400' : 'text-gray-400'">{{ slotLastWin }} €</p>
+                            </div>
+                            <button @click="spinSlot" :disabled="isSlotSpinning || balance < 10"
+                                    class="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 text-white font-bold py-3 px-10 rounded-full shadow-lg transform active:scale-95 transition disabled:opacity-50 disabled:cursor-not-allowed">
+                                {{ isSlotSpinning ? '...' : 'TOURNER (10€)' }}
+                            </button>
+                        </div>
+                        <div v-if="slotMessage" :class="['mt-4 text-sm font-bold', slotWin ? 'text-green-400' : 'text-red-400']">{{ slotMessage }}</div>
+                    </div>
+                </section>
+
+                <!-- Game Cards -->
+                <section class="w-full max-w-6xl">
+                    <h2 class="text-3xl font-bold mb-8 text-white border-l-4 border-purple-500 pl-4">Nos Autres Jeux Populaires</h2>
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+
+                        <!-- Chicken Road Card -->
+                        <div class="group relative bg-gray-800/60 backdrop-blur rounded-2xl overflow-hidden border border-orange-500/30 card-hover transition duration-300 cursor-pointer" @click="currentPage = 'chicken-road'">
+                            <div class="absolute inset-0 bg-gradient-to-br from-orange-900/40 to-transparent opacity-0 group-hover:opacity-100 transition duration-300"></div>
+                            <div class="p-8 flex flex-col h-full justify-between relative z-10">
+                                <div>
+                                    <div class="w-16 h-16 bg-orange-500/20 rounded-full flex items-center justify-center mb-6 text-3xl">🐔</div>
+                                    <h3 class="text-2xl font-bold text-white mb-2">Chicken Road</h3>
+                                    <p class="text-gray-400 text-sm mb-6">Aidez la poule à traverser la route ! Chaque voie franchie multiplie vos gains. Cash out avant qu'elle se fasse écraser !</p>
+                                </div>
+                                <button class="w-full bg-gray-700 hover:bg-orange-600 text-white font-semibold py-3 rounded-lg transition flex items-center justify-center gap-2 group-hover:bg-orange-600">
+                                    <span>Jouer Maintenant</span>
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10.293 3.293a1 1 0 011.414 0l6 6a1 1 0 010 1.414l-6 6a1 1 0 01-1.414-1.414L14.586 11H3a1 1 0 110-2h11.586l-4.293-4.293a1 1 0 010-1.414z" clip-rule="evenodd" /></svg>
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Diamond Mines Card -->
+                        <div class="group relative bg-gray-800/60 backdrop-blur rounded-2xl overflow-hidden border border-blue-500/30 card-hover transition duration-300 cursor-pointer" @click="currentPage = 'diamond-mines'">
+                            <div class="absolute inset-0 bg-gradient-to-br from-blue-900/40 to-transparent opacity-0 group-hover:opacity-100 transition duration-300"></div>
+                            <div class="p-8 flex flex-col h-full justify-between relative z-10">
+                                <div>
+                                    <div class="w-16 h-16 bg-blue-500/20 rounded-full flex items-center justify-center mb-6 text-3xl">💎</div>
+                                    <h3 class="text-2xl font-bold text-white mb-2">Diamond Mines</h3>
+                                    <p class="text-gray-400 text-sm mb-6">Creusez profondément pour trouver les diamants cachés. Évitez les bombes pour multiplier vos gains.</p>
+                                </div>
+                                <button class="w-full bg-gray-700 hover:bg-blue-600 text-white font-semibold py-3 rounded-lg transition flex items-center justify-center gap-2 group-hover:bg-blue-600">
+                                    <span>Jouer Maintenant</span>
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10.293 3.293a1 1 0 011.414 0l6 6a1 1 0 010 1.414l-6 6a1 1 0 01-1.414-1.414L14.586 11H3a1 1 0 110-2h11.586l-4.293-4.293a1 1 0 010-1.414z" clip-rule="evenodd" /></svg>
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Blackjack Card -->
+                        <div class="group relative bg-gray-800/60 backdrop-blur rounded-2xl overflow-hidden border border-green-500/30 card-hover transition duration-300 cursor-pointer" @click="currentPage = 'blackjack'">
+                            <div class="absolute inset-0 bg-gradient-to-br from-green-900/40 to-transparent opacity-0 group-hover:opacity-100 transition duration-300"></div>
+                            <div class="p-8 flex flex-col h-full justify-between relative z-10">
+                                <div>
+                                    <div class="w-16 h-16 bg-green-500/20 rounded-full flex items-center justify-center mb-6 text-3xl">🃏</div>
+                                    <h3 class="text-2xl font-bold text-white mb-2">Blackjack</h3>
+                                    <p class="text-gray-400 text-sm mb-6">Le classique des casinos. Battez le croupier en atteignant 21 sans dépasser. Stratégie et chance.</p>
+                                </div>
+                                <button class="w-full bg-gray-700 hover:bg-green-600 text-white font-semibold py-3 rounded-lg transition flex items-center justify-center gap-2 group-hover:bg-green-600">
+                                    <span>Jouer Maintenant</span>
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10.293 3.293a1 1 0 011.414 0l6 6a1 1 0 010 1.414l-6 6a1 1 0 01-1.414-1.414L14.586 11H3a1 1 0 110-2h11.586l-4.293-4.293a1 1 0 010-1.414z" clip-rule="evenodd" /></svg>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+            </div>
+        </transition>
+
+        <!-- ===== CHICKEN ROAD ===== -->
+        <transition name="fade" mode="out-in">
+            <div v-if="currentPage === 'chicken-road'" key="chicken-road" class="max-w-4xl mx-auto">
+                <div class="bg-gray-800/80 backdrop-blur-md border border-orange-500/30 rounded-3xl p-8 shadow-2xl">
+
+                    <!-- Header -->
+                    <div class="flex justify-between items-center mb-6">
+                        <div>
+                            <h2 class="text-3xl font-extrabold text-orange-400 neon-orange">🐔 Chicken Road</h2>
+                            <p class="text-gray-400 text-sm mt-1">Traversez les voies, cash out avant l'écrasement !</p>
+                        </div>
+                        <div class="flex items-center gap-6">
+                            <div class="text-right">
+                                <p class="text-xs text-gray-400 uppercase">Multiplicateur</p>
+                                <p class="text-3xl font-extrabold" :class="crGameStarted ? 'text-orange-400' : 'text-gray-500'">x{{ crMultiplier.toFixed(2) }}</p>
+                            </div>
+                            <div class="text-right">
+                                <p class="text-xs text-gray-400 uppercase">Gain Potentiel</p>
+                                <p class="text-2xl font-bold text-green-400">{{ crPotentialWin }} €</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Multiplicateur progress bar -->
+                    <div class="mb-6">
+                        <div class="flex justify-between text-xs text-gray-400 mb-1">
+                            <span>x1.00</span>
+                            <span>Risque croissant →</span>
+                            <span>x{{ crMaxMultiplier.toFixed(2) }}</span>
+                        </div>
+                        <div class="w-full h-3 bg-gray-700 rounded-full overflow-hidden">
+                            <div class="multiplier-bar h-full" :style="{ width: crProgressPercent + '%' }"></div>
+                        </div>
+                    </div>
+
+                    <!-- Mise -->
+                    <div v-if="!crGameStarted" class="mb-6 flex gap-4 items-center flex-wrap">
+                        <div>
+                            <label class="block text-gray-400 text-xs mb-1 uppercase tracking-widest">Votre Mise</label>
+                            <div class="flex gap-2 items-center">
+                                <input type="number" v-model="crBet" :min="10" :max="balance"
+                                       class="bg-gray-700 border border-gray-600 rounded-lg px-4 py-3 text-white font-bold w-28" />
+                                <button @click="crBet = Math.min(balance, crBet + 10)" class="bg-gray-700 hover:bg-gray-600 px-3 py-3 rounded-lg font-bold">+</button>
+                                <button @click="crBet = Math.max(10, crBet - 10)"      class="bg-gray-700 hover:bg-gray-600 px-3 py-3 rounded-lg font-bold">−</button>
+                                <button @click="crBet = balance"                         class="bg-purple-600 hover:bg-purple-500 px-3 py-3 rounded-lg font-bold text-sm">MAX</button>
+                            </div>
+                        </div>
+                        <div class="flex gap-3 mt-4 md:mt-5">
+                            <button v-for="q in [10,25,50,100]" :key="q" @click="crBet = Math.min(balance, q)"
+                                    class="bg-gray-700 hover:bg-orange-600 px-3 py-2 rounded-lg text-sm font-semibold transition">
+                                {{ q }}€
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Road -->
+                    <div class="road-container mb-6" :style="{ background: '#111827' }">
+
+                        <!-- Lanes rendered from bottom (start) to top (finish) -->
+                        <div class="absolute inset-0 flex flex-col-reverse">
+
+                            <!-- Start zone (bottom) -->
+                            <div class="road-safe flex items-center justify-center relative" style="height: 60px; flex-shrink:0;">
+                                <span class="text-green-300 font-bold text-xs uppercase tracking-widest z-10">🏠 DÉPART</span>
+                            </div>
+
+                            <!-- Road lanes -->
+                            <div v-for="(lane, i) in crLanes" :key="i"
+                                 class="road-danger lane-dashes relative flex items-center"
+                                 style="height: 56px; flex-shrink:0;">
+                                <!-- Lane number & multiplier -->
+                                <div class="absolute left-2 z-10 flex flex-col items-start">
+                                    <span class="text-yellow-400 text-xs font-bold">x{{ lane.multiplier.toFixed(2) }}</span>
+                                </div>
+
+                                <!-- Cars -->
+                                <template v-if="crGameStarted || crGameEnded">
+                                    <div v-for="(car, ci) in lane.cars" :key="ci"
+                                         class="car"
+                                         :class="car.dir === 'left' ? 'car-left' : 'car-right'"
+                                         :style="{ animationDuration: car.speed + 's', animationDelay: car.delay + 's' }">
+                                        {{ car.emoji }}
+                                    </div>
+                                </template>
+
+                                <!-- Crossed overlay -->
+                                <div v-if="crCurrentLane > i" class="absolute inset-0 bg-green-500/10 border-l-4 border-green-500/40 z-10 flex items-center justify-end pr-3">
+                                    <span class="text-green-400 text-lg">✓</span>
+                                </div>
+                                <!-- Hit overlay -->
+                                <div v-if="crDeathLane === i" class="absolute inset-0 bg-red-500/30 z-10 flex items-center justify-end pr-3">
+                                    <span class="text-red-400 text-lg">💥</span>
+                                </div>
+                            </div>
+
+                            <!-- Finish zone (top) -->
+                            <div class="road-finish flex items-center justify-center relative" style="height: 60px; flex-shrink:0;">
+                                <span class="text-yellow-900 font-extrabold text-sm uppercase tracking-widest z-10 bg-yellow-400/80 px-3 py-1 rounded-full">🏆 ARRIVÉE x{{ crMaxMultiplier.toFixed(2) }}</span>
+                            </div>
+                        </div>
+
+                        <!-- Chicken -->
+                        <div class="chicken"
+                             :class="[crSquished ? 'chicken-squish' : '', crWon ? 'chicken-win' : '']"
+                             :style="{ bottom: crChickenBottom + 'px' }">
+                            {{ crSquished ? '💀' : '🐔' }}
+                        </div>
+                    </div>
+
+                    <!-- Message -->
+                    <div v-if="crMessage" :class="['text-center text-xl font-bold py-3 px-4 rounded-xl mb-4',
+                        crWon      ? 'bg-green-500/20 text-green-400 pulse-win' :
+                        crSquished ? 'bg-red-500/20 text-red-400' :
+                                     'bg-orange-500/20 text-orange-300']">
+                        {{ crMessage }}
+                    </div>
+
+                    <!-- Buttons -->
+                    <div class="flex gap-4 justify-center flex-wrap">
+
+                        <!-- Start -->
+                        <button v-if="!crGameStarted"
+                                @click="crStart"
+                                :disabled="crBet > balance || crBet < 10"
+                                class="bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-400 hover:to-red-400 text-white font-extrabold py-4 px-12 rounded-full shadow-lg transform active:scale-95 transition disabled:opacity-50 disabled:cursor-not-allowed text-lg glow-orange">
+                            🐔 LANCER ({{ crBet }}€)
+                        </button>
+
+                        <!-- Step forward -->
+                        <button v-if="crGameStarted && !crGameEnded"
+                                @click="crStep"
+                                class="bg-gradient-to-r from-orange-500 to-yellow-500 hover:from-orange-400 hover:to-yellow-400 text-white font-extrabold py-4 px-10 rounded-full shadow-lg transform active:scale-95 transition text-lg">
+                            ➡️ AVANCER
+                        </button>
+
+                        <!-- Cash out -->
+                        <button v-if="crGameStarted && !crGameEnded && crCurrentLane > 0"
+                                @click="crCashOut"
+                                class="bg-gradient-to-r from-green-600 to-emerald-500 hover:from-green-500 hover:to-emerald-400 text-white font-extrabold py-4 px-10 rounded-full shadow-lg transform active:scale-95 transition text-lg glow-green">
+                            💰 CASH OUT {{ crPotentialWin }} €
+                        </button>
+
+                        <!-- Replay -->
+                        <button v-if="crGameEnded"
+                                @click="crReset"
+                                class="bg-gray-700 hover:bg-gray-600 text-white font-bold py-3 px-8 rounded-full transition text-lg">
+                            Rejouer
+                        </button>
+                    </div>
+
+                    <!-- Stats -->
+                    <div class="mt-8 pt-6 border-t border-gray-700 grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
+                        <div>
+                            <p class="text-xs text-gray-400 uppercase">Voies Franchies</p>
+                            <p class="text-xl font-bold text-orange-400">{{ crCurrentLane }} / {{ crLanes.length }}</p>
+                        </div>
+                        <div>
+                            <p class="text-xs text-gray-400 uppercase">Mise</p>
+                            <p class="text-xl font-bold text-yellow-400">{{ crBet }} €</p>
+                        </div>
+                        <div>
+                            <p class="text-xs text-gray-400 uppercase">Gain Potentiel</p>
+                            <p class="text-xl font-bold text-green-400">{{ crPotentialWin }} €</p>
+                        </div>
+                        <div>
+                            <p class="text-xs text-gray-400 uppercase">Meilleur Gain</p>
+                            <p class="text-xl font-bold text-purple-400">{{ crBestWin }} €</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </transition>
+
+        <!-- DIAMOND MINES -->
+        <transition name="fade" mode="out-in">
+            <div v-if="currentPage === 'diamond-mines'" key="diamond-mines" class="max-w-4xl mx-auto">
+                <div class="bg-gray-800/80 backdrop-blur-md border border-blue-500/30 rounded-3xl p-8 shadow-2xl">
+                    <div class="flex justify-between items-center mb-8">
+                        <h2 class="text-3xl font-bold text-blue-400">💎 Diamond Mines</h2>
+                        <div class="flex items-center gap-4">
+                            <div class="text-right">
+                                <p class="text-xs text-gray-400 uppercase">Multiplicateur</p>
+                                <p class="text-2xl font-bold text-yellow-400">x{{ dmMultiplier.toFixed(2) }}</p>
+                            </div>
+                            <div class="text-right">
+                                <p class="text-xs text-gray-400 uppercase">Gain Potentiel</p>
+                                <p class="text-2xl font-bold text-green-400">{{ (dmBet * dmMultiplier).toFixed(0) }} €</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div v-if="!dmGameStarted" class="mb-8">
+                        <label class="block text-gray-400 text-sm mb-2">Votre Mise</label>
+                        <div class="flex gap-4 items-center">
+                            <input type="number" v-model="dmBet" :min="10" :max="balance" class="bg-gray-700 border border-gray-600 rounded-lg px-4 py-3 text-white font-bold w-32" />
+                            <button @click="dmBet = Math.min(balance, dmBet + 10)" class="bg-gray-700 hover:bg-gray-600 px-4 py-3 rounded-lg font-bold">+</button>
+                            <button @click="dmBet = Math.max(10, dmBet - 10)" class="bg-gray-700 hover:bg-gray-600 px-4 py-3 rounded-lg font-bold">-</button>
+                            <button @click="dmBet = balance" class="bg-purple-600 hover:bg-purple-500 px-4 py-3 rounded-lg font-bold">MAX</button>
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-5 gap-3 mb-8" v-if="dmGameStarted || dmGameEnded">
+                        <button v-for="(tile, index) in dmTiles" :key="index"
+                                @click="clickTile(index)"
+                                :disabled="dmGameEnded || tile.revealed"
+                                :class="['aspect-square rounded-xl flex items-center justify-center text-4xl font-bold transition-all duration-300 tile-reveal',
+                                    tile.revealed
+                                        ? (tile.isDiamond ? 'bg-green-500/80 border-2 border-green-400' : 'bg-red-500/80 border-2 border-red-400')
+                                        : 'bg-gray-700 hover:bg-gray-600 border-2 border-gray-600 hover:border-blue-400 cursor-pointer']">
+                            <span v-if="tile.revealed" class="card-flip">{{ tile.isDiamond ? '💎' : '💣' }}</span>
+                            <span v-else class="text-gray-500">?</span>
+                        </button>
+                    </div>
+                    <div v-if="!dmGameStarted" class="text-center">
+                        <button @click="startDiamondMines" :disabled="dmBet > balance || dmBet < 10"
+                                class="bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-500 hover:to-cyan-500 text-white font-bold py-4 px-12 rounded-full shadow-lg transform active:scale-95 transition disabled:opacity-50 disabled:cursor-not-allowed text-lg">
+                            COMMENCER ({{ dmBet }} €)
+                        </button>
+                    </div>
+                    <div v-if="dmGameStarted && !dmGameEnded" class="text-center">
+                        <button @click="dmCashOut"
+                                class="bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-500 hover:to-emerald-500 text-white font-bold py-4 px-12 rounded-full shadow-lg transform active:scale-95 transition text-lg">
+                            ENCAISSER {{ (dmBet * dmMultiplier).toFixed(0) }} €
+                        </button>
+                    </div>
+                    <div v-if="dmGameEnded" class="text-center">
+                        <div :class="['text-2xl font-bold mb-4', dmGameWon ? 'text-green-400 pulse-win' : 'text-red-400']">
+                            {{ dmGameWon ? '🎉 Gagné ! + ' + (dmBet * dmMultiplier).toFixed(0) + ' €' : '💥 Perdu !' }}
+                        </div>
+                        <button @click="resetDiamondMines" class="bg-gray-700 hover:bg-gray-600 text-white font-bold py-3 px-8 rounded-full transition">Rejouer</button>
+                    </div>
+                    <div class="mt-8 pt-6 border-t border-gray-700 grid grid-cols-3 gap-4 text-center">
+                        <div><p class="text-xs text-gray-400 uppercase">Diamants Trouvés</p><p class="text-xl font-bold text-blue-400">{{ dmDiamondsFound }} / {{ dmTotalDiamonds }}</p></div>
+                        <div><p class="text-xs text-gray-400 uppercase">Bombes</p><p class="text-xl font-bold text-red-400">{{ dmBombsHit }}</p></div>
+                        <div><p class="text-xs text-gray-400 uppercase">Tuiles Restantes</p><p class="text-xl font-bold text-yellow-400">{{ dmTiles.filter(t => !t.revealed).length }}</p></div>
+                    </div>
+                </div>
+            </div>
+        </transition>
+
+        <!-- BLACKJACK -->
+        <transition name="fade" mode="out-in">
+            <div v-if="currentPage === 'blackjack'" key="blackjack" class="max-w-5xl mx-auto">
+                <div class="bg-gray-800/80 backdrop-blur-md border border-green-500/30 rounded-3xl p-8 shadow-2xl">
+                    <div class="flex justify-between items-center mb-8">
+                        <h2 class="text-3xl font-bold text-green-400">🃏 Blackjack</h2>
+                        <div class="flex items-center gap-6">
+                            <div class="text-right"><p class="text-xs text-gray-400 uppercase">Mise Actuelle</p><p class="text-2xl font-bold text-yellow-400">{{ bjCurrentBet }} €</p></div>
+                            <div class="text-right"><p class="text-xs text-gray-400 uppercase">Gain Potentiel</p><p class="text-2xl font-bold text-green-400">{{ bjCurrentBet * 2 }} €</p></div>
+                        </div>
+                    </div>
+                    <div class="mb-8">
+                        <div class="flex items-center gap-2 mb-3">
+                            <span class="text-gray-400 text-sm">CROUPIER</span>
+                            <span class="bg-gray-700 px-3 py-1 rounded-full text-xs font-bold">{{ dealerScore }}</span>
+                        </div>
+                        <div class="flex gap-3 flex-wrap">
+                            <div v-for="(card, index) in bjDealerHand" :key="'dealer-' + index"
+                                 class="w-20 h-28 bg-white rounded-lg flex items-center justify-center text-3xl font-bold shadow-lg card-flip"
+                                 :class="index === 0 && !bjGameEnded && !bjDealerRevealed ? 'bg-gradient-to-br from-purple-600 to-purple-800 text-white' : 'text-gray-900'">
+                                {{ index === 0 && !bjGameEnded && !bjDealerRevealed ? '🂠' : getCardSymbol(card) }}
+                            </div>
+                        </div>
+                    </div>
+                    <div v-if="bjGameMessage" :class="['text-center text-2xl font-bold mb-8 py-4 rounded-xl',
+                            bjGameMessage.includes('Gagné') ? 'bg-green-500/20 text-green-400' :
+                            bjGameMessage.includes('Perdu') ? 'bg-red-500/20 text-red-400' :
+                            'bg-yellow-500/20 text-yellow-400']">{{ bjGameMessage }}</div>
+                    <div class="mb-8">
+                        <div class="flex items-center gap-2 mb-3">
+                            <span class="text-gray-400 text-sm">VOUS</span>
+                            <span class="bg-gray-700 px-3 py-1 rounded-full text-xs font-bold">{{ playerScore }}</span>
+                        </div>
+                        <div class="flex gap-3 flex-wrap">
+                            <div v-for="(card, index) in bjPlayerHand" :key="'player-' + index"
+                                 class="w-20 h-28 bg-white rounded-lg flex items-center justify-center text-3xl font-bold shadow-lg card-flip text-gray-900">
+                                {{ getCardSymbol(card) }}
+                            </div>
+                        </div>
+                    </div>
+                    <div v-if="!bjGameStarted" class="text-center">
+                        <label class="block text-gray-400 text-sm mb-3">Votre Mise</label>
+                        <div class="flex gap-4 items-center justify-center mb-6">
+                            <input type="number" v-model="bjBetAmount" :min="10" :max="balance" class="bg-gray-700 border border-gray-600 rounded-lg px-4 py-3 text-white font-bold w-32" />
+                            <button @click="bjBetAmount = Math.min(balance, bjBetAmount + 10)" class="bg-gray-700 hover:bg-gray-600 px-4 py-3 rounded-lg font-bold">+</button>
+                            <button @click="bjBetAmount = Math.max(10, bjBetAmount - 10)" class="bg-gray-700 hover:bg-gray-600 px-4 py-3 rounded-lg font-bold">-</button>
+                            <button @click="bjBetAmount = balance" class="bg-purple-600 hover:bg-purple-500 px-4 py-3 rounded-lg font-bold">MAX</button>
+                        </div>
+                        <button @click="startBlackjack" :disabled="bjBetAmount > balance || bjBetAmount < 10"
+                                class="bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-500 hover:to-emerald-500 text-white font-bold py-4 px-12 rounded-full shadow-lg transform active:scale-95 transition disabled:opacity-50 disabled:cursor-not-allowed text-lg">
+                            DISTRIBUER ({{ bjBetAmount }} €)
+                        </button>
+                    </div>
+                    <div v-if="bjGameStarted && !bjGameEnded && bjPlayerTurn" class="flex justify-center gap-4 flex-wrap">
+                        <button @click="bjHit"        class="bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-500 hover:to-cyan-500 text-white font-bold py-3 px-8 rounded-full shadow-lg transition text-lg">PIGER (Hit)</button>
+                        <button @click="bjStand"      class="bg-gradient-to-r from-red-600 to-orange-600 hover:from-red-500 hover:to-orange-500 text-white font-bold py-3 px-8 rounded-full shadow-lg transition text-lg">RESTER (Stand)</button>
+                        <button @click="bjDoubleDown" :disabled="balance < bjCurrentBet || bjPlayerHand.length !== 2"
+                                class="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 text-white font-bold py-3 px-8 rounded-full shadow-lg transition text-lg disabled:opacity-50 disabled:cursor-not-allowed">DOUBLER (x2)</button>
+                    </div>
+                    <div v-if="bjGameEnded" class="text-center">
+                        <button @click="resetBlackjack" class="bg-gray-700 hover:bg-gray-600 text-white font-bold py-3 px-8 rounded-full transition text-lg">Nouvelle Partie</button>
+                    </div>
+                    <div class="mt-8 pt-6 border-t border-gray-700 grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
+                        <div><p class="text-xs text-gray-400 uppercase">Parties Jouées</p><p class="text-xl font-bold text-white">{{ bjGamesPlayed }}</p></div>
+                        <div><p class="text-xs text-gray-400 uppercase">Victoires</p><p class="text-xl font-bold text-green-400">{{ bjWins }}</p></div>
+                        <div><p class="text-xs text-gray-400 uppercase">Défaites</p><p class="text-xl font-bold text-red-400">{{ bjLosses }}</p></div>
+                        <div><p class="text-xs text-gray-400 uppercase">Blackjacks</p><p class="text-xl font-bold text-yellow-400">{{ bjBlackjacks }}</p></div>
+                    </div>
+                </div>
+            </div>
+        </transition>
+
+    </main>
+
+    <footer class="relative z-10 bg-gray-900 border-t border-gray-800 mt-12 py-6">
+        <div class="container mx-auto px-6 text-center text-gray-500 text-sm">
+            <p>&copy; 2025 Casino Royal. Jouez responsablement. 18+</p>
+        </div>
+    </footer>
+</div>
+
+<script>
+    const { createApp } = Vue;
+
+    createApp({
+        data() {
+            return {
+                currentPage: 'home',
+                balance: 1000,
+
+                // Slot Machine
+                isSlotSpinning: false,
+                slotReels: [{ symbol: '🍒' }, { symbol: '🍒' }, { symbol: '🍒' }],
+                slotSymbols: ['🍒', '🍇', '💎', '7️⃣', '🍋'],
+                slotMessage: '',
+                slotWin: false,
+                slotLastWin: 0,
+
+                // ===== CHICKEN ROAD =====
+                crBet: 50,
+                crGameStarted: false,
+                crGameEnded: false,
+                crCurrentLane: 0,   // how many lanes crossed
+                crSquished: false,
+                crWon: false,
+                crDeathLane: -1,
+                crMessage: '',
+                crBestWin: 0,
+                crLanes: [],        // built on start
+
+                // Diamond Mines
+                dmBet: 50,
+                dmGameStarted: false,
+                dmGameEnded: false,
+                dmGameWon: false,
+                dmTiles: [],
+                dmDiamondsFound: 0,
+                dmBombsHit: 0,
+                dmMultiplier: 1.0,
+                dmTotalDiamonds: 5,
+
+                // Blackjack
+                bjBetAmount: 50,
+                bjCurrentBet: 0,
+                bjDeck: [],
+                bjPlayerHand: [],
+                bjDealerHand: [],
+                bjPlayerTurn: true,
+                bjDealerRevealed: false,
+                bjGameMessage: '',
+                bjGameStarted: false,
+                bjGameEnded: false,
+                bjGamesPlayed: 0,
+                bjWins: 0,
+                bjLosses: 0,
+                bjBlackjacks: 0,
+            }
+        },
+
+        computed: {
+            // ---- Chicken Road ----
+            crMultiplier() {
+                if (this.crCurrentLane === 0) return 1.0;
+                return parseFloat((Math.pow(1.45, this.crCurrentLane)).toFixed(2));
+            },
+            crMaxMultiplier() {
+                return parseFloat((Math.pow(1.45, this.crLanes.length)).toFixed(2));
+            },
+            crPotentialWin() {
+                return Math.floor(this.crBet * this.crMultiplier);
+            },
+            crProgressPercent() {
+                if (!this.crLanes.length) return 0;
+                return Math.min(100, (this.crCurrentLane / this.crLanes.length) * 100);
+            },
+            crChickenBottom() {
+                // Map lane index to pixel position in 480px container
+                // Bottom: 0px = start zone (60px), each lane = 56px
+                const startZone = 60;
+                const laneH = 56;
+                return startZone + (this.crCurrentLane * laneH) - 10;
+            },
+
+            // ---- Blackjack ----
+            dealerScore() {
+                if (!this.bjDealerRevealed && this.bjGameStarted && !this.bjGameEnded) {
+                    return this.bjCalculateScore([this.bjDealerHand[1]]);
+                }
+                return this.bjCalculateScore(this.bjDealerHand);
+            },
+            playerScore() {
+                return this.bjCalculateScore(this.bjPlayerHand);
+            }
+        },
+
+        methods: {
+            // ============================================================
+            //  CHICKEN ROAD
+            // ============================================================
+            crBuildLanes() {
+                const carEmojis = ['🚗','🚙','🚕','🚌','🚎','🏎️','🚐','🛻'];
+                const numLanes = 8;
+                this.crLanes = Array.from({ length: numLanes }, (_, i) => {
+                    const mult = parseFloat((Math.pow(1.45, i + 1)).toFixed(2));
+                    // Risk: more cars on later lanes
+                    const numCars = 1 + Math.floor(i / 2);
+                    const cars = Array.from({ length: numCars }, (_, ci) => ({
+                        emoji: carEmojis[Math.floor(Math.random() * carEmojis.length)],
+                        dir: (ci + i) % 2 === 0 ? 'left' : 'right',
+                        speed: 1.2 + Math.random() * 1.5 - (i * 0.08), // faster on later lanes
+                        delay: -(Math.random() * 3),
+                    }));
+                    return { multiplier: mult, cars, safe: null }; // safe determined on step
+                });
+            },
+
+            crStart() {
+                if (this.crBet > this.balance || this.crBet < 10) return;
+                this.balance -= this.crBet;
+                this.crBuildLanes();
+                this.crGameStarted = true;
+                this.crGameEnded = false;
+                this.crCurrentLane = 0;
+                this.crSquished = false;
+                this.crWon = false;
+                this.crDeathLane = -1;
+                this.crMessage = '🐔 La poule est prête ! Avancez ou encaissez !';
+            },
+
+            crStep() {
+                if (!this.crGameStarted || this.crGameEnded) return;
+                const laneIndex = this.crCurrentLane;
+
+                // Probability of dying increases with each lane
+                // Lane 1: ~20% die, Lane 8: ~65% die
+                const dieChance = 0.18 + (laneIndex * 0.065);
+                const died = Math.random() < dieChance;
+
+                if (died) {
+                    this.crDeathLane = laneIndex;
+                    this.crSquished = true;
+                    this.crGameEnded = true;
+                    this.crGameStarted = false;
+                    this.crMessage = `💥 Écrasée sur la voie ${laneIndex + 1} ! Vous perdez ${this.crBet} €`;
+                } else {
+                    this.crCurrentLane++;
+                    if (this.crCurrentLane >= this.crLanes.length) {
+                        // Reached finish!
+                        this.crCashOut(true);
+                    } else {
+                        const gain = Math.floor(this.crBet * this.crMultiplier);
+                        this.crMessage = `✅ Voie ${this.crCurrentLane} franchie ! Gain potentiel : ${gain} €`;
+                    }
+                }
+            },
+
+            crCashOut(auto = false) {
+                const win = Math.floor(this.crBet * this.crMultiplier);
+                this.balance += win;
+                this.crWon = true;
+                this.crGameEnded = true;
+                this.crGameStarted = false;
+                if (win > this.crBestWin) this.crBestWin = win;
+                if (auto) {
+                    this.crMessage = `🏆 INCROYABLE ! La poule a tout traversé ! Vous gagnez ${win} € !`;
+                } else {
+                    this.crMessage = `💰 Cash out ! Vous empochez ${win} € (x${this.crMultiplier.toFixed(2)})`;
+                }
+            },
+
+            crReset() {
+                this.crGameStarted = false;
+                this.crGameEnded = false;
+                this.crCurrentLane = 0;
+                this.crSquished = false;
+                this.crWon = false;
+                this.crDeathLane = -1;
+                this.crMessage = '';
+                this.crLanes = [];
+            },
+
+            // ============================================================
+            //  SLOT MACHINE
+            // ============================================================
+            spinSlot() {
+                if (this.balance < 10) { this.slotMessage = "Solde insuffisant !"; this.slotWin = false; return; }
+                this.balance -= 10;
+                this.isSlotSpinning = true;
+                this.slotMessage = '';
+                this.slotWin = false;
+                let spins = 0;
+                const interval = setInterval(() => {
+                    this.slotReels = this.slotReels.map(() => ({ symbol: this.slotSymbols[Math.floor(Math.random() * this.slotSymbols.length)] }));
+                    if (++spins >= 20) { clearInterval(interval); this.finalizeSlotSpin(); }
+                }, 100);
+            },
+            finalizeSlotSpin() {
+                this.isSlotSpinning = false;
+                const r1 = this.slotSymbols[Math.floor(Math.random() * this.slotSymbols.length)];
+                const r2 = this.slotSymbols[Math.floor(Math.random() * this.slotSymbols.length)];
+                const r3 = this.slotSymbols[Math.floor(Math.random() * this.slotSymbols.length)];
+                this.slotReels = [{ symbol: r1 }, { symbol: r2 }, { symbol: r3 }];
+                if (r1 === r2 && r2 === r3) {
+                    const prize = r1 === '7️⃣' ? 500 : (r1 === '💎' ? 200 : 50);
+                    this.balance += prize; this.slotLastWin = prize;
+                    this.slotMessage = `JACKPOT ! Vous avez gagné ${prize}€ !`; this.slotWin = true;
+                } else if (r1 === r2 || r2 === r3 || r1 === r3) {
+                    this.balance += 15; this.slotLastWin = 15;
+                    this.slotMessage = `Petit gain ! +15€`; this.slotWin = true;
+                } else {
+                    this.slotLastWin = 0; this.slotMessage = "Perdu, réessayez !"; this.slotWin = false;
+                }
+            },
+
+            // ============================================================
+            //  DIAMOND MINES
+            // ============================================================
+            dmInitTiles() {
+                const positions = Array(25).fill(false);
+                for (let i = 0; i < this.dmTotalDiamonds; i++) positions[i] = true;
+                for (let i = positions.length - 1; i > 0; i--) {
+                    const j = Math.floor(Math.random() * (i + 1));
+                    [positions[i], positions[j]] = [positions[j], positions[i]];
+                }
+                this.dmTiles = positions.map(isDiamond => ({ isDiamond, revealed: false }));
+            },
+            startDiamondMines() {
+                if (this.dmBet > this.balance || this.dmBet < 10) return;
+                this.balance -= this.dmBet;
+                this.dmGameStarted = true; this.dmGameEnded = false; this.dmGameWon = false;
+                this.dmDiamondsFound = 0; this.dmBombsHit = 0; this.dmMultiplier = 1.0;
+                this.dmInitTiles();
+            },
+            clickTile(index) {
+                if (this.dmGameEnded || this.dmTiles[index].revealed) return;
+                this.dmTiles[index].revealed = true;
+                if (this.dmTiles[index].isDiamond) {
+                    this.dmDiamondsFound++;
+                    this.dmMultiplier *= 1.25;
+                    if (this.dmDiamondsFound === this.dmTotalDiamonds) this.dmCashOut();
+                } else {
+                    this.dmBombsHit++;
+                    this.dmGameEnded = true; this.dmGameWon = false;
+                    this.dmTiles.forEach(t => t.revealed = true);
+                }
+            },
+            dmCashOut() {
+                this.balance += Math.floor(this.dmBet * this.dmMultiplier);
+                this.dmGameEnded = true; this.dmGameWon = true;
+                this.dmTiles.forEach(t => t.revealed = true);
+            },
+            resetDiamondMines() {
+                this.dmGameStarted = false; this.dmGameEnded = false; this.dmGameWon = false;
+                this.dmDiamondsFound = 0; this.dmBombsHit = 0; this.dmMultiplier = 1.0;
+            },
+
+            // ============================================================
+            //  BLACKJACK
+            // ============================================================
+            bjCreateDeck() {
+                const suits = ['♠','♥','♦','♣'], values = ['2','3','4','5','6','7','8','9','10','J','Q','K','A'];
+                const deck = suits.flatMap(s => values.map(v => ({ suit: s, value: v })));
+                for (let i = deck.length - 1; i > 0; i--) {
+                    const j = Math.floor(Math.random() * (i + 1));
+                    [deck[i], deck[j]] = [deck[j], deck[i]];
+                }
+                return deck;
+            },
+            getCardSymbol(card) { return card.value + card.suit; },
+            bjCalculateScore(hand) {
+                let score = 0, aces = 0;
+                for (let c of hand) {
+                    if (['J','Q','K'].includes(c.value)) score += 10;
+                    else if (c.value === 'A') { score += 11; aces++; }
+                    else score += parseInt(c.value);
+                }
+                while (score > 21 && aces > 0) { score -= 10; aces--; }
+                return score;
+            },
+            startBlackjack() {
+                if (this.bjBetAmount > this.balance || this.bjBetAmount < 10) return;
+                this.bjCurrentBet = this.bjBetAmount;
+                this.balance -= this.bjCurrentBet;
+                this.bjDeck = this.bjCreateDeck();
+                this.bjPlayerHand = [this.bjDeck.pop(), this.bjDeck.pop()];
+                this.bjDealerHand = [this.bjDeck.pop(), this.bjDeck.pop()];
+                this.bjPlayerTurn = true; this.bjDealerRevealed = false;
+                this.bjGameMessage = ''; this.bjGameStarted = true; this.bjGameEnded = false;
+                this.bjGamesPlayed++;
+                if (this.playerScore === 21) {
+                    this.bjBlackjacks++; this.bjWins++;
+                    this.balance += this.bjCurrentBet * 2.5;
+                    this.bjGameMessage = '🎉 BLACKJACK ! Vous gagnez ' + (this.bjCurrentBet * 2.5) + ' €';
+                    this.bjGameEnded = true; this.bjDealerRevealed = true;
+                }
+            },
+            bjHit() {
+                this.bjPlayerHand.push(this.bjDeck.pop());
+                if (this.playerScore > 21) {
+                    this.bjLosses++;
+                    this.bjGameMessage = '💥 Perdu ! Vous avez dépassé 21';
+                    this.bjGameEnded = true; this.bjDealerRevealed = true;
+                }
+            },
+            bjStand() {
+                this.bjPlayerTurn = false; this.bjDealerRevealed = true;
+                while (this.dealerScore < 17) this.bjDealerHand.push(this.bjDeck.pop());
+                if (this.dealerScore > 21)             { this.bjWins++;   this.balance += this.bjCurrentBet * 2; this.bjGameMessage = '🎉 Gagné ! Le croupier a dépassé 21'; }
+                else if (this.playerScore > this.dealerScore) { this.bjWins++;   this.balance += this.bjCurrentBet * 2; this.bjGameMessage = '🎉 Gagné ! Vous battez le croupier'; }
+                else if (this.playerScore < this.dealerScore) { this.bjLosses++; this.bjGameMessage = '💥 Perdu ! Le croupier gagne'; }
+                else                                          { this.balance += this.bjCurrentBet; this.bjGameMessage = '🤝 Égalité ! Mise remboursée'; }
+                this.bjGameEnded = true;
+            },
+            bjDoubleDown() {
+                if (this.balance < this.bjCurrentBet || this.bjPlayerHand.length !== 2) return;
+                this.balance -= this.bjCurrentBet; this.bjCurrentBet *= 2;
+                this.bjPlayerHand.push(this.bjDeck.pop());
+                if (this.playerScore > 21) { this.bjLosses++; this.bjGameMessage = '💥 Perdu ! Vous avez dépassé 21'; this.bjGameEnded = true; this.bjDealerRevealed = true; }
+                else this.bjStand();
+            },
+            resetBlackjack() {
+                this.bjGameStarted = false; this.bjGameEnded = false;
+                this.bjPlayerHand = []; this.bjDealerHand = [];
+                this.bjCurrentBet = 0; this.bjGameMessage = '';
+                this.bjPlayerTurn = true; this.bjDealerRevealed = false;
+            }
+        }
+    }).mount('#app');
+</script>
+</body>
+</html>

@@ -1,0 +1,511 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Casino Royal - Tous les Jeux</title>
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        .neon-text   { text-shadow: 0 0 10px rgba(168,85,247,.7), 0 0 20px rgba(168,85,247,.5); }
+        .neon-orange { text-shadow: 0 0 10px rgba(251,146,60,.8), 0 0 25px rgba(251,146,60,.5); }
+        .neon-red    { text-shadow: 0 0 10px rgba(239,68,68,.8),  0 0 25px rgba(239,68,68,.5); }
+        .neon-yellow { text-shadow: 0 0 10px rgba(234,179,8,.8),  0 0 25px rgba(234,179,8,.5); }
+        .blur-spin { animation: bluranim .1s infinite; }
+        @keyframes bluranim { 0%{filter:blur(0);transform:translateY(0);} 50%{filter:blur(2px);transform:translateY(-2px);} 100%{filter:blur(0);transform:translateY(0);} }
+        .card-hover:hover { transform:translateY(-5px); box-shadow:0 10px 30px -5px rgba(168,85,247,.4); }
+        .card-flip { animation:flip .6s ease-in-out; }
+        @keyframes flip { 0%{transform:rotateY(0)} 50%{transform:rotateY(90deg)} 100%{transform:rotateY(0)} }
+        .tile-reveal { animation:reveal .3s ease-out; }
+        @keyframes reveal { 0%{transform:scale(.8);opacity:0} 100%{transform:scale(1);opacity:1} }
+        .pulse-win { animation:pulsewin .5s ease-in-out infinite; }
+        @keyframes pulsewin { 0%,100%{transform:scale(1)} 50%{transform:scale(1.05)} }
+        .fade-enter-active,.fade-leave-active{transition:opacity .3s ease;}
+        .fade-enter-from,.fade-leave-to{opacity:0;}
+        /* CHICKEN */
+        .car{position:absolute;font-size:1.8rem;top:50%;transform:translateY(-50%);filter:drop-shadow(0 0 6px rgba(255,100,0,.6));}
+        .car-left{animation:driveleft linear infinite;}
+        .car-right{animation:driveright linear infinite;}
+        @keyframes driveleft{from{left:105%}to{left:-15%}}
+        @keyframes driveright{from{left:-15%}to{left:105%}}
+        .chicken{font-size:2.8rem;transition:bottom .35s cubic-bezier(.4,1.6,.6,1);position:absolute;left:50%;transform:translateX(-50%);z-index:20;filter:drop-shadow(0 4px 8px rgba(0,0,0,.5));}
+        .chicken-squish{animation:squish .4s ease-out forwards;}
+        @keyframes squish{0%{transform:translateX(-50%) scaleY(1) scaleX(1);}30%{transform:translateX(-50%) scaleY(.3) scaleX(1.8);}60%{transform:translateX(-50%) scaleY(.15) scaleX(2.1);opacity:.7;}100%{transform:translateX(-50%) scaleY(0) scaleX(2.5);opacity:0;}}
+        .chicken-win{animation:chickendance .5s ease-in-out infinite;}
+        @keyframes chickendance{0%,100%{transform:translateX(-50%) rotate(-10deg) scale(1.1);}50%{transform:translateX(-50%) rotate(10deg) scale(1.2);}}
+        .road-safe{background:repeating-linear-gradient(90deg,#15803d 0,#15803d 20px,#166534 20px,#166534 40px);}
+        .road-danger{background:linear-gradient(180deg,#374151 0,#1f2937 50%,#374151 100%);border-top:3px solid #fbbf24;border-bottom:3px solid #fbbf24;}
+        .road-finish{background:repeating-linear-gradient(45deg,#fbbf24 0,#fbbf24 10px,#1f2937 10px,#1f2937 20px);}
+        .lane-dashes::after{content:'';position:absolute;left:0;right:0;top:50%;transform:translateY(-50%);height:3px;background:repeating-linear-gradient(90deg,#d1d5db 0,#d1d5db 30px,transparent 30px,transparent 60px);opacity:.4;}
+        .multiplier-bar{background:linear-gradient(90deg,#16a34a,#eab308,#dc2626);border-radius:9999px;transition:width .3s ease;}
+        .road-container{position:relative;height:480px;overflow:hidden;border-radius:1rem;border:2px solid rgba(251,146,60,.3);}
+        .glow-green{box-shadow:0 0 20px rgba(34,197,94,.5),0 0 40px rgba(34,197,94,.2);}
+        .glow-orange{box-shadow:0 0 20px rgba(251,146,60,.5),0 0 40px rgba(251,146,60,.2);}
+        /* ROULETTE */
+        .roulette-wheel{width:260px;height:260px;border-radius:50%;background:conic-gradient(#dc2626 0deg 9.73deg,#1f2937 9.73deg 19.46deg,#dc2626 19.46deg 29.19deg,#1f2937 29.19deg 38.92deg,#dc2626 38.92deg 48.65deg,#1f2937 48.65deg 58.38deg,#dc2626 58.38deg 68.11deg,#1f2937 68.11deg 77.84deg,#dc2626 77.84deg 87.57deg,#1f2937 87.57deg 97.3deg,#dc2626 97.3deg 107.03deg,#1f2937 107.03deg 116.76deg,#dc2626 116.76deg 126.49deg,#1f2937 126.49deg 136.22deg,#dc2626 136.22deg 145.95deg,#1f2937 145.95deg 155.68deg,#dc2626 155.68deg 165.41deg,#1f2937 165.41deg 175.14deg,#16a34a 175.14deg 184.87deg,#dc2626 184.87deg 194.6deg,#1f2937 194.6deg 204.33deg,#dc2626 204.33deg 214.06deg,#1f2937 214.06deg 223.79deg,#dc2626 223.79deg 233.52deg,#1f2937 233.52deg 243.25deg,#dc2626 243.25deg 252.98deg,#1f2937 252.98deg 262.71deg,#dc2626 262.71deg 272.44deg,#1f2937 272.44deg 282.17deg,#dc2626 282.17deg 291.9deg,#1f2937 291.9deg 301.63deg,#dc2626 301.63deg 311.36deg,#1f2937 311.36deg 321.09deg,#dc2626 321.09deg 330.82deg,#1f2937 330.82deg 340.55deg,#dc2626 340.55deg 350.28deg,#1f2937 350.28deg 360deg);border:8px solid #92400e;box-shadow:0 0 40px rgba(234,179,8,.4),inset 0 0 20px rgba(0,0,0,.5);transition:transform 4s cubic-bezier(.17,.67,.12,1);position:relative;}
+        .roulette-chip{width:40px;height:40px;border-radius:50%;border:3px dashed rgba(255,255,255,.5);display:flex;align-items:center;justify-content:center;font-size:.65rem;font-weight:800;cursor:pointer;transition:transform .15s,box-shadow .15s;}
+        .roulette-chip:hover{transform:scale(1.15);}
+        .roulette-bet-btn{transition:all .2s;}
+        .roulette-bet-btn:hover{transform:scale(1.05);}
+        /* POKER */
+        .poker-card{width:64px;height:90px;border-radius:8px;background:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:1.4rem;font-weight:800;box-shadow:0 4px 12px rgba(0,0,0,.4);transition:transform .3s,box-shadow .3s;position:relative;overflow:hidden;}
+        .poker-card.red{color:#dc2626;}
+        .poker-card.black{color:#111827;}
+        .poker-card.hidden{background:linear-gradient(135deg,#4c1d95 25%,#5b21b6 25%,#5b21b6 50%,#4c1d95 50%,#4c1d95 75%,#5b21b6 75%);background-size:20px 20px;}
+        .poker-card-deal{animation:dealcard .4s ease-out;}
+        @keyframes dealcard{from{transform:translateY(-60px) rotate(-5deg);opacity:0;}to{transform:translateY(0) rotate(0);opacity:1;}}
+        .poker-hand-rank{font-size:.75rem;padding:4px 10px;border-radius:999px;font-weight:700;background:rgba(234,179,8,.2);color:#fbbf24;border:1px solid rgba(234,179,8,.4);}
+        .poker-chip{width:32px;height:32px;border-radius:50%;border:2px dashed rgba(255,255,255,.4);display:flex;align-items:center;justify-content:center;font-size:.55rem;font-weight:800;cursor:pointer;transition:transform .15s;}
+        .poker-chip:hover{transform:scale(1.2);}
+        .action-btn{padding:10px 20px;border-radius:9999px;font-weight:700;font-size:.9rem;transition:all .2s;cursor:pointer;border:none;}
+        .action-btn:active{transform:scale(.95);}
+    </style>
+</head>
+<body class="bg-gray-900 text-white overflow-x-hidden">
+<div id="app" class="relative min-h-screen">
+    <div class="fixed inset-0 z-0">
+        <img src="https://image.qwenlm.ai/public_source/b1228ef7-0bc5-44c8-8085-37d25c7ddf46/1f06ab945-cf2a-402f-bfbd-f8869cc4090f.png" class="w-full h-full object-cover opacity-40">
+        <div class="absolute inset-0 bg-gradient-to-b from-gray-900/80 via-gray-900/60 to-gray-900"></div>
+    </div>
+    <nav class="relative z-10 container mx-auto px-4 py-5 flex justify-between items-center flex-wrap gap-3">
+        <button @click="currentPage='home'" class="text-2xl font-bold text-purple-400 neon-text tracking-wider">CASINO<span class="text-white">ROYAL</span></button>
+        <div class="flex flex-wrap gap-4 text-sm font-semibold text-gray-300">
+            <button @click="currentPage='home'"          :class="currentPage==='home'?'text-purple-400':'hover:text-purple-400'">Accueil</button>
+            <button @click="currentPage='roulette'"      :class="currentPage==='roulette'?'text-red-400':'hover:text-red-400'">🎡 Roulette</button>
+            <button @click="currentPage='poker'"         :class="currentPage==='poker'?'text-yellow-400':'hover:text-yellow-400'">♠️ Poker</button>
+            <button @click="currentPage='chicken-road'"  :class="currentPage==='chicken-road'?'text-orange-400':'hover:text-orange-400'">🐔 Chicken</button>
+            <button @click="currentPage='diamond-mines'" :class="currentPage==='diamond-mines'?'text-blue-400':'hover:text-blue-400'">💎 Mines</button>
+            <button @click="currentPage='blackjack'"     :class="currentPage==='blackjack'?'text-green-400':'hover:text-green-400'">🃏 Blackjack</button>
+        </div>
+        <div class="bg-gray-800/80 backdrop-blur px-4 py-2 rounded-full border border-purple-500/30">
+            <span class="text-gray-400 text-sm">Solde: </span><span class="text-green-400 font-bold">{{ balance }} €</span>
+        </div>
+    </nav>
+    <main class="relative z-10 container mx-auto px-4 py-8">
+
+        <!-- HOME -->
+        <transition name="fade" mode="out-in">
+            <div v-if="currentPage==='home'" key="home" class="flex flex-col items-center">
+                <section class="w-full max-w-4xl mb-16 text-center">
+                    <h1 class="text-5xl md:text-7xl font-extrabold mb-4 text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-400 neon-text">Tentez votre chance</h1>
+                    <p class="text-gray-400 text-lg mb-12 max-w-2xl mx-auto">6 jeux, des frissons garantis. Commencez par le bandit manchot !</p>
+                    <div class="bg-gray-800/80 backdrop-blur-md border border-purple-500/30 rounded-3xl p-8 shadow-2xl max-w-lg mx-auto relative overflow-hidden">
+                        <div class="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-purple-500 via-pink-500 to-purple-500"></div>
+                        <div class="flex justify-center space-x-4 mb-8 bg-black/50 p-6 rounded-xl border border-gray-700">
+                            <div v-for="(reel,i) in slotReels" :key="i" class="w-20 h-24 bg-white rounded-lg flex items-center justify-center text-5xl shadow-inner">
+                                <span :class="{'blur-spin':isSlotSpinning}">{{ reel.symbol }}</span>
+                            </div>
+                        </div>
+                        <div class="flex justify-between items-center">
+                            <div class="text-left"><p class="text-xs text-gray-400 uppercase tracking-widest">Dernier Gain</p><p class="text-xl font-bold" :class="slotWin?'text-green-400':'text-gray-400'">{{ slotLastWin }} €</p></div>
+                            <button @click="spinSlot" :disabled="isSlotSpinning||balance<10" class="bg-gradient-to-r from-purple-600 to-pink-600 text-white font-bold py-3 px-10 rounded-full shadow-lg active:scale-95 transition disabled:opacity-50">{{ isSlotSpinning?'...':'TOURNER (10€)' }}</button>
+                        </div>
+                        <div v-if="slotMessage" :class="['mt-4 text-sm font-bold',slotWin?'text-green-400':'text-red-400']">{{ slotMessage }}</div>
+                    </div>
+                </section>
+                <section class="w-full max-w-6xl">
+                    <h2 class="text-3xl font-bold mb-8 text-white border-l-4 border-purple-500 pl-4">Nos Jeux</h2>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                        <div v-for="g in gameCards" :key="g.id" @click="currentPage=g.id" class="group relative bg-gray-800/60 backdrop-blur rounded-2xl overflow-hidden card-hover transition duration-300 cursor-pointer" :style="'border:1px solid '+g.color+'44'">
+                            <div class="absolute inset-0 opacity-0 group-hover:opacity-100 transition duration-300" :style="'background:linear-gradient(135deg,'+g.color+'22,transparent)'"></div>
+                            <div class="p-7 relative z-10">
+                                <div class="w-14 h-14 rounded-full flex items-center justify-center mb-5 text-3xl" :style="'background:'+g.color+'22'">{{ g.icon }}</div>
+                                <h3 class="text-xl font-bold text-white mb-2">{{ g.name }}</h3>
+                                <p class="text-gray-400 text-sm mb-5">{{ g.desc }}</p>
+                                <button class="w-full text-white font-semibold py-2.5 rounded-lg transition flex items-center justify-center gap-2 text-sm" :style="'background:'+g.color+'33'">Jouer Maintenant →</button>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+            </div>
+        </transition>
+
+        <!-- ROULETTE -->
+        <transition name="fade" mode="out-in">
+            <div v-if="currentPage==='roulette'" key="roulette" class="max-w-5xl mx-auto">
+                <div class="bg-gray-800/80 backdrop-blur-md border border-red-500/30 rounded-3xl p-8 shadow-2xl">
+                    <div class="flex justify-between items-center mb-8">
+                        <div><h2 class="text-3xl font-extrabold text-red-400 neon-red">🎡 Roulette</h2><p class="text-gray-400 text-sm mt-1">Misez, tournez, gagnez !</p></div>
+                        <div class="text-right"><p class="text-xs text-gray-400 uppercase">Mise totale</p><p class="text-2xl font-bold text-yellow-400">{{ rlTotalBet }} €</p></div>
+                    </div>
+                    <div class="flex flex-col lg:flex-row gap-8">
+                        <!-- Wheel -->
+                        <div class="flex flex-col items-center gap-4 flex-shrink-0">
+                            <div class="relative">
+                                <div class="roulette-wheel" :style="{transform:'rotate('+rlWheelAngle+'deg)'}">
+                                    <div style="width:18px;height:18px;border-radius:50%;background:radial-gradient(circle at 35% 35%,#fff,#d1d5db);box-shadow:0 2px 6px rgba(0,0,0,.6);position:absolute;top:14px;left:50%;transform:translateX(-50%);"></div>
+                                </div>
+                                <div class="absolute inset-0 flex items-center justify-center pointer-events-none">
+                                    <div class="w-14 h-14 rounded-full bg-gray-900 border-4 border-yellow-600 flex items-center justify-center text-xl font-black text-yellow-400 shadow-lg">{{ rlResult !== null ? rlResult : '?' }}</div>
+                                </div>
+                                <div class="absolute -top-3 left-1/2 -translate-x-1/2 w-0 h-0" style="border-left:8px solid transparent;border-right:8px solid transparent;border-top:20px solid #fbbf24;"></div>
+                            </div>
+                            <div v-if="rlResult !== null" :class="['text-lg font-bold px-4 py-2 rounded-full',rlResultColor==='red'?'bg-red-500/20 text-red-300':rlResultColor==='black'?'bg-gray-500/20 text-gray-200':'bg-green-500/20 text-green-300']">
+                                {{ rlResult }} — {{ rlResultColor==='red'?'Rouge':rlResultColor==='black'?'Noir':'Zéro' }}<span v-if="rlResultParity"> — {{ rlResultParity }}</span>
+                            </div>
+                            <button @click="rlSpin" :disabled="rlSpinning||rlTotalBet===0||rlTotalBet>balance" class="bg-gradient-to-r from-red-600 to-rose-600 text-white font-extrabold py-3 px-10 rounded-full shadow-lg transition disabled:opacity-50 active:scale-95">{{ rlSpinning?'🎡 En cours...':'TOURNER !' }}</button>
+                            <button @click="rlClearBets" :disabled="rlSpinning" class="text-sm text-gray-400 hover:text-red-400 transition">Effacer les mises</button>
+                        </div>
+                        <!-- Table -->
+                        <div class="flex-1">
+                            <div class="mb-4">
+                                <p class="text-xs text-gray-400 uppercase mb-2 tracking-widest">Valeur de la mise</p>
+                                <div class="flex gap-2 flex-wrap">
+                                    <div v-for="chip in rlChips" :key="chip.value" @click="rlSelectedChip=chip.value" class="roulette-chip" :style="'background:'+chip.bg+';border-color:'+chip.border+';color:'+chip.text+(rlSelectedChip===chip.value?';box-shadow:0 0 14px '+chip.bg:'')">{{ chip.value }}</div>
+                                </div>
+                            </div>
+                            <div class="mb-4">
+                                <p class="text-xs text-gray-400 uppercase mb-2 tracking-widest">Numéros (0–36)</p>
+                                <div class="grid gap-1" style="grid-template-columns:repeat(13,1fr)">
+                                    <button @click="rlPlaceBet('number',0)" class="aspect-square rounded text-xs font-bold text-green-300 hover:scale-110 transition" style="background:rgba(22,163,74,.4)">0</button>
+                                    <button v-for="n in 36" :key="n" @click="rlPlaceBet('number',n)" :class="['aspect-square rounded text-xs font-bold transition hover:scale-110 relative',rlRedNumbers.includes(n)?'text-white':'text-gray-200']" :style="'background:'+(rlRedNumbers.includes(n)?'rgba(220,38,38,.6)':'rgba(31,41,55,.8)')+(rlGetBetOnNumber(n)?';outline:2px solid #fbbf24':'')">
+                                        {{ n }}<span v-if="rlGetBetOnNumber(n)" class="absolute -top-1 -right-1 w-3 h-3 rounded-full bg-yellow-400" style="font-size:.4rem"></span>
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                                <button v-for="ob in rlOutsideBets" :key="ob.key" @click="rlPlaceBet(ob.key,null)" class="roulette-bet-btn text-sm font-bold py-3 px-2 rounded-xl transition" :style="'background:'+ob.bg+';color:'+ob.color+(rlGetBetOnOutside(ob.key)?';outline:2px solid #fbbf24':'')">
+                                    {{ ob.label }}<span class="block text-xs opacity-70">x{{ ob.mult }}</span>
+                                </button>
+                            </div>
+                            <div v-if="rlBets.length" class="mt-4 bg-gray-700/50 rounded-xl p-3">
+                                <p class="text-xs text-gray-400 uppercase mb-2">Mises en cours</p>
+                                <div class="flex flex-wrap gap-2">
+                                    <span v-for="(b,i) in rlBets" :key="i" @click="rlBets.splice(i,1)" class="text-xs bg-gray-600 px-2 py-1 rounded-full cursor-pointer hover:bg-red-600 transition">{{ b.type==='number'?'N°'+b.value:b.type }}: {{ b.amount }}€ ×</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div v-if="rlMessage" :class="['mt-6 text-center text-xl font-bold py-3 rounded-xl',rlWon?'bg-green-500/20 text-green-400 pulse-win':'bg-red-500/20 text-red-400']">{{ rlMessage }}</div>
+                    <div class="mt-6 pt-6 border-t border-gray-700 grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
+                        <div><p class="text-xs text-gray-400 uppercase">Tours</p><p class="text-xl font-bold text-white">{{ rlRounds }}</p></div>
+                        <div><p class="text-xs text-gray-400 uppercase">Victoires</p><p class="text-xl font-bold text-green-400">{{ rlWins }}</p></div>
+                        <div><p class="text-xs text-gray-400 uppercase">Défaites</p><p class="text-xl font-bold text-red-400">{{ rlLosses }}</p></div>
+                        <div><p class="text-xs text-gray-400 uppercase">Meilleur Gain</p><p class="text-xl font-bold text-yellow-400">{{ rlBestWin }}€</p></div>
+                    </div>
+                </div>
+            </div>
+        </transition>
+
+        <!-- POKER -->
+        <transition name="fade" mode="out-in">
+            <div v-if="currentPage==='poker'" key="poker" class="max-w-4xl mx-auto">
+                <div class="bg-gray-800/80 backdrop-blur-md border border-yellow-500/30 rounded-3xl p-8 shadow-2xl">
+                    <div class="flex justify-between items-center mb-6">
+                        <div><h2 class="text-3xl font-extrabold text-yellow-400 neon-yellow">♠️ Poker — Texas Hold'em</h2><p class="text-gray-400 text-sm mt-1">2 cartes en main + 5 communes. Battez le dealer !</p></div>
+                        <div class="flex gap-6">
+                            <div class="text-right"><p class="text-xs text-gray-400 uppercase">Pot</p><p class="text-2xl font-bold text-yellow-400">{{ pkPot }}€</p></div>
+                            <div class="text-right"><p class="text-xs text-gray-400 uppercase">Raise</p><p class="text-2xl font-bold text-orange-400">{{ pkCurrentBet }}€</p></div>
+                        </div>
+                    </div>
+                    <!-- Table -->
+                    <div class="rounded-2xl p-6 mb-6" style="background:linear-gradient(135deg,#14532d,#166534,#14532d);border:3px solid #92400e;box-shadow:inset 0 0 40px rgba(0,0,0,.4)">
+                        <!-- Dealer -->
+                        <div class="mb-6">
+                            <div class="flex items-center gap-2 mb-3"><span class="text-gray-300 text-sm font-semibold uppercase tracking-widest">🤖 Dealer</span><span v-if="pkDealerRank" class="poker-hand-rank">{{ pkDealerRank }}</span></div>
+                            <div class="flex gap-3 flex-wrap">
+                                <div v-for="(c,i) in pkDealerHand" :key="'d'+i" :class="['poker-card poker-card-deal',c.hidden?'hidden':pkCardColor(c)]">
+                                    <template v-if="!c.hidden"><span style="font-size:.7rem;position:absolute;top:4px;left:5px;font-weight:900;">{{ c.value }}{{ c.suit }}</span><span>{{ c.suit }}</span></template>
+                                </div>
+                            </div>
+                        </div>
+                        <!-- Community -->
+                        <div class="mb-6">
+                            <p class="text-gray-400 text-xs uppercase tracking-widest mb-3">Cartes Communes</p>
+                            <div class="flex gap-3 flex-wrap">
+                                <div v-for="(c,i) in pkCommunity" :key="'com'+i" :class="['poker-card poker-card-deal',pkCardColor(c)]">
+                                    <span style="font-size:.7rem;position:absolute;top:4px;left:5px;font-weight:900;">{{ c.value }}{{ c.suit }}</span><span>{{ c.suit }}</span>
+                                </div>
+                                <div v-for="p in (5-pkCommunity.length)" :key="'ph'+p" class="poker-card" style="background:#0f4c2a;border:2px dashed rgba(255,255,255,.15)"></div>
+                            </div>
+                        </div>
+                        <!-- Player -->
+                        <div>
+                            <div class="flex items-center gap-2 mb-3"><span class="text-white text-sm font-semibold uppercase tracking-widest">👤 Vous</span><span v-if="pkPlayerRank" class="poker-hand-rank">{{ pkPlayerRank }}</span></div>
+                            <div class="flex gap-3 flex-wrap">
+                                <div v-for="(c,i) in pkPlayerHand" :key="'p'+i" :class="['poker-card poker-card-deal',pkCardColor(c)]">
+                                    <span style="font-size:.7rem;position:absolute;top:4px;left:5px;font-weight:900;">{{ c.value }}{{ c.suit }}</span><span>{{ c.suit }}</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div v-if="pkMessage" :class="['text-center text-xl font-bold py-3 px-4 rounded-xl mb-5',pkWon?'bg-green-500/20 text-green-400 pulse-win':pkMessage.includes('Égalité')?'bg-yellow-500/20 text-yellow-400':'bg-red-500/20 text-red-400']">{{ pkMessage }}</div>
+                    <!-- Pre-game -->
+                    <div v-if="!pkGameStarted&&!pkGameEnded" class="flex flex-col items-center gap-4">
+                        <div>
+                            <p class="text-gray-400 text-xs uppercase tracking-widest mb-2 text-center">Mise de départ (Ante)</p>
+                            <div class="flex gap-2 justify-center flex-wrap">
+                                <div v-for="chip in pkChips" :key="chip.value" @click="pkBetAmount=Math.min(balance,chip.value)" class="poker-chip" :style="'background:'+chip.bg+';border-color:'+chip.border+';color:'+chip.text+(pkBetAmount===chip.value?';box-shadow:0 0 12px '+chip.bg:'')">{{ chip.value }}</div>
+                            </div>
+                            <p class="text-center mt-3 text-white font-bold text-lg">Mise: {{ pkBetAmount }}€</p>
+                        </div>
+                        <button @click="pkDeal" :disabled="pkBetAmount>balance||pkBetAmount<5" class="action-btn bg-gradient-to-r from-yellow-500 to-amber-500 text-gray-900 text-lg">♠️ DISTRIBUER ({{ pkBetAmount }}€)</button>
+                    </div>
+                    <!-- Actions -->
+                    <div v-if="pkGameStarted&&!pkGameEnded" class="flex flex-wrap justify-center gap-3">
+                        <template v-if="pkStage==='preflop'">
+                            <button @click="pkCheck"  class="action-btn bg-blue-600 hover:bg-blue-500 text-white">CHECK → Voir Flop</button>
+                            <button @click="pkRaise"  :disabled="pkCurrentBet>balance" class="action-btn bg-yellow-500 hover:bg-yellow-400 text-gray-900">RAISE +{{ pkCurrentBet }}€</button>
+                            <button @click="pkFold"   class="action-btn bg-red-700 hover:bg-red-600 text-white">FOLD</button>
+                        </template>
+                        <template v-if="pkStage==='flop'">
+                            <button @click="pkCheckTurn" class="action-btn bg-blue-600 hover:bg-blue-500 text-white">CHECK → Voir Turn</button>
+                            <button @click="pkRaise"     :disabled="pkCurrentBet>balance" class="action-btn bg-yellow-500 hover:bg-yellow-400 text-gray-900">RAISE +{{ pkCurrentBet }}€</button>
+                            <button @click="pkFold"      class="action-btn bg-red-700 hover:bg-red-600 text-white">FOLD</button>
+                        </template>
+                        <template v-if="pkStage==='turn'">
+                            <button @click="pkCheckRiver" class="action-btn bg-blue-600 hover:bg-blue-500 text-white">CHECK → Voir River</button>
+                            <button @click="pkRaise"      :disabled="pkCurrentBet>balance" class="action-btn bg-yellow-500 hover:bg-yellow-400 text-gray-900">RAISE +{{ pkCurrentBet }}€</button>
+                            <button @click="pkFold"       class="action-btn bg-red-700 hover:bg-red-600 text-white">FOLD</button>
+                        </template>
+                        <template v-if="pkStage==='river'">
+                            <button @click="pkShowdown" class="action-btn bg-gradient-to-r from-yellow-500 to-amber-500 text-gray-900 text-lg">⚔️ SHOWDOWN !</button>
+                            <button @click="pkFold"     class="action-btn bg-red-700 hover:bg-red-600 text-white">FOLD</button>
+                        </template>
+                    </div>
+                    <div v-if="pkGameEnded" class="flex justify-center mt-4">
+                        <button @click="pkReset" class="action-btn bg-gray-700 hover:bg-gray-600 text-white text-lg">Nouvelle Partie</button>
+                    </div>
+                    <div class="mt-8 pt-6 border-t border-gray-700 grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
+                        <div><p class="text-xs text-gray-400 uppercase">Parties</p><p class="text-xl font-bold text-white">{{ pkGamesPlayed }}</p></div>
+                        <div><p class="text-xs text-gray-400 uppercase">Victoires</p><p class="text-xl font-bold text-green-400">{{ pkWins }}</p></div>
+                        <div><p class="text-xs text-gray-400 uppercase">Défaites</p><p class="text-xl font-bold text-red-400">{{ pkLosses }}</p></div>
+                        <div><p class="text-xs text-gray-400 uppercase">Meilleur Gain</p><p class="text-xl font-bold text-yellow-400">{{ pkBestWin }}€</p></div>
+                    </div>
+                </div>
+            </div>
+        </transition>
+
+        <!-- CHICKEN ROAD -->
+        <transition name="fade" mode="out-in">
+            <div v-if="currentPage==='chicken-road'" key="chicken-road" class="max-w-4xl mx-auto">
+                <div class="bg-gray-800/80 backdrop-blur-md border border-orange-500/30 rounded-3xl p-8 shadow-2xl">
+                    <div class="flex justify-between items-center mb-6"><div><h2 class="text-3xl font-extrabold text-orange-400 neon-orange">🐔 Chicken Road</h2><p class="text-gray-400 text-sm mt-1">Traversez les voies, cash out avant l'écrasement !</p></div><div class="flex items-center gap-6"><div class="text-right"><p class="text-xs text-gray-400 uppercase">Multiplicateur</p><p class="text-3xl font-extrabold" :class="crGameStarted?'text-orange-400':'text-gray-500'">x{{ crMultiplier.toFixed(2) }}</p></div><div class="text-right"><p class="text-xs text-gray-400 uppercase">Gain Potentiel</p><p class="text-2xl font-bold text-green-400">{{ crPotentialWin }}€</p></div></div></div>
+                    <div class="mb-6"><div class="flex justify-between text-xs text-gray-400 mb-1"><span>x1.00</span><span>Risque croissant</span><span>x{{ crMaxMultiplier.toFixed(2) }}</span></div><div class="w-full h-3 bg-gray-700 rounded-full overflow-hidden"><div class="multiplier-bar h-full" :style="{width:crProgressPercent+'%'}"></div></div></div>
+                    <div v-if="!crGameStarted" class="mb-6 flex gap-4 items-center flex-wrap"><div><label class="block text-gray-400 text-xs mb-1 uppercase tracking-widest">Mise</label><div class="flex gap-2 items-center"><input type="number" v-model="crBet" :min="10" :max="balance" class="bg-gray-700 border border-gray-600 rounded-lg px-4 py-3 text-white font-bold w-28" /><button @click="crBet=Math.min(balance,crBet+10)" class="bg-gray-700 hover:bg-gray-600 px-3 py-3 rounded-lg font-bold">+</button><button @click="crBet=Math.max(10,crBet-10)" class="bg-gray-700 hover:bg-gray-600 px-3 py-3 rounded-lg font-bold">−</button><button @click="crBet=balance" class="bg-purple-600 hover:bg-purple-500 px-3 py-3 rounded-lg font-bold text-sm">MAX</button></div></div><div class="flex gap-3 mt-4 md:mt-5"><button v-for="q in [10,25,50,100]" :key="q" @click="crBet=Math.min(balance,q)" class="bg-gray-700 hover:bg-orange-600 px-3 py-2 rounded-lg text-sm font-semibold transition">{{ q }}€</button></div></div>
+                    <div class="road-container mb-6" :style="{background:'#111827'}">
+                        <div class="absolute inset-0 flex flex-col-reverse">
+                            <div class="road-safe flex items-center justify-center relative" style="height:60px;flex-shrink:0;"><span class="text-green-300 font-bold text-xs uppercase tracking-widest z-10">🏠 DÉPART</span></div>
+                            <div v-for="(lane,i) in crLanes" :key="i" class="road-danger lane-dashes relative flex items-center" style="height:56px;flex-shrink:0;">
+                                <div class="absolute left-2 z-10"><span class="text-yellow-400 text-xs font-bold">x{{ lane.multiplier.toFixed(2) }}</span></div>
+                                <template v-if="crGameStarted||crGameEnded"><div v-for="(car,ci) in lane.cars" :key="ci" class="car" :class="car.dir==='left'?'car-left':'car-right'" :style="{animationDuration:car.speed+'s',animationDelay:car.delay+'s'}">{{ car.emoji }}</div></template>
+                                <div v-if="crCurrentLane>i" class="absolute inset-0 bg-green-500/10 border-l-4 border-green-500/40 z-10 flex items-center justify-end pr-3"><span class="text-green-400 text-lg">✓</span></div>
+                                <div v-if="crDeathLane===i" class="absolute inset-0 bg-red-500/30 z-10 flex items-center justify-end pr-3"><span class="text-red-400 text-lg">💥</span></div>
+                            </div>
+                            <div class="road-finish flex items-center justify-center relative" style="height:60px;flex-shrink:0;"><span class="text-yellow-900 font-extrabold text-sm uppercase tracking-widest z-10 bg-yellow-400/80 px-3 py-1 rounded-full">🏆 ARRIVÉE x{{ crMaxMultiplier.toFixed(2) }}</span></div>
+                        </div>
+                        <div class="chicken" :class="[crSquished?'chicken-squish':'',crWon?'chicken-win':'']" :style="{bottom:crChickenBottom+'px'}">{{ crSquished?'💀':'🐔' }}</div>
+                    </div>
+                    <div v-if="crMessage" :class="['text-center text-xl font-bold py-3 px-4 rounded-xl mb-4',crWon?'bg-green-500/20 text-green-400 pulse-win':crSquished?'bg-red-500/20 text-red-400':'bg-orange-500/20 text-orange-300']">{{ crMessage }}</div>
+                    <div class="flex gap-4 justify-center flex-wrap">
+                        <button v-if="!crGameStarted" @click="crStart" :disabled="crBet>balance||crBet<10" class="bg-gradient-to-r from-orange-500 to-red-500 text-white font-extrabold py-4 px-12 rounded-full shadow-lg active:scale-95 transition disabled:opacity-50 text-lg glow-orange">🐔 LANCER ({{ crBet }}€)</button>
+                        <button v-if="crGameStarted&&!crGameEnded" @click="crStep" class="bg-gradient-to-r from-orange-500 to-yellow-500 text-white font-extrabold py-4 px-10 rounded-full shadow-lg active:scale-95 transition text-lg">➡️ AVANCER</button>
+                        <button v-if="crGameStarted&&!crGameEnded&&crCurrentLane>0" @click="crCashOut()" class="bg-gradient-to-r from-green-600 to-emerald-500 text-white font-extrabold py-4 px-10 rounded-full shadow-lg active:scale-95 transition text-lg glow-green">💰 CASH OUT {{ crPotentialWin }}€</button>
+                        <button v-if="crGameEnded" @click="crReset" class="bg-gray-700 hover:bg-gray-600 text-white font-bold py-3 px-8 rounded-full transition text-lg">Rejouer</button>
+                    </div>
+                    <div class="mt-8 pt-6 border-t border-gray-700 grid grid-cols-2 md:grid-cols-4 gap-4 text-center"><div><p class="text-xs text-gray-400 uppercase">Voies</p><p class="text-xl font-bold text-orange-400">{{ crCurrentLane }}/{{ crLanes.length }}</p></div><div><p class="text-xs text-gray-400 uppercase">Mise</p><p class="text-xl font-bold text-yellow-400">{{ crBet }}€</p></div><div><p class="text-xs text-gray-400 uppercase">Potentiel</p><p class="text-xl font-bold text-green-400">{{ crPotentialWin }}€</p></div><div><p class="text-xs text-gray-400 uppercase">Meilleur</p><p class="text-xl font-bold text-purple-400">{{ crBestWin }}€</p></div></div>
+                </div>
+            </div>
+        </transition>
+
+        <!-- DIAMOND MINES -->
+        <transition name="fade" mode="out-in">
+            <div v-if="currentPage==='diamond-mines'" key="diamond-mines" class="max-w-4xl mx-auto">
+                <div class="bg-gray-800/80 backdrop-blur-md border border-blue-500/30 rounded-3xl p-8 shadow-2xl">
+                    <div class="flex justify-between items-center mb-8"><h2 class="text-3xl font-bold text-blue-400">💎 Diamond Mines</h2><div class="flex gap-4"><div class="text-right"><p class="text-xs text-gray-400 uppercase">Multiplicateur</p><p class="text-2xl font-bold text-yellow-400">x{{ dmMultiplier.toFixed(2) }}</p></div><div class="text-right"><p class="text-xs text-gray-400 uppercase">Potentiel</p><p class="text-2xl font-bold text-green-400">{{ (dmBet*dmMultiplier).toFixed(0) }}€</p></div></div></div>
+                    <div v-if="!dmGameStarted" class="mb-8"><label class="block text-gray-400 text-sm mb-2">Votre Mise</label><div class="flex gap-4 items-center"><input type="number" v-model="dmBet" :min="10" :max="balance" class="bg-gray-700 border border-gray-600 rounded-lg px-4 py-3 text-white font-bold w-32" /><button @click="dmBet=Math.min(balance,dmBet+10)" class="bg-gray-700 hover:bg-gray-600 px-4 py-3 rounded-lg font-bold">+</button><button @click="dmBet=Math.max(10,dmBet-10)" class="bg-gray-700 hover:bg-gray-600 px-4 py-3 rounded-lg font-bold">-</button><button @click="dmBet=balance" class="bg-purple-600 hover:bg-purple-500 px-4 py-3 rounded-lg font-bold">MAX</button></div></div>
+                    <div class="grid grid-cols-5 gap-3 mb-8" v-if="dmGameStarted||dmGameEnded"><button v-for="(tile,index) in dmTiles" :key="index" @click="clickTile(index)" :disabled="dmGameEnded||tile.revealed" :class="['aspect-square rounded-xl flex items-center justify-center text-4xl font-bold transition-all duration-300 tile-reveal',tile.revealed?(tile.isDiamond?'bg-green-500/80 border-2 border-green-400':'bg-red-500/80 border-2 border-red-400'):'bg-gray-700 hover:bg-gray-600 border-2 border-gray-600 hover:border-blue-400 cursor-pointer']"><span v-if="tile.revealed" class="card-flip">{{ tile.isDiamond?'💎':'💣' }}</span><span v-else class="text-gray-500">?</span></button></div>
+                    <div v-if="!dmGameStarted" class="text-center"><button @click="startDiamondMines" :disabled="dmBet>balance||dmBet<10" class="bg-gradient-to-r from-blue-600 to-cyan-600 text-white font-bold py-4 px-12 rounded-full shadow-lg active:scale-95 transition disabled:opacity-50 text-lg">COMMENCER ({{ dmBet }}€)</button></div>
+                    <div v-if="dmGameStarted&&!dmGameEnded" class="text-center"><button @click="dmCashOut" class="bg-gradient-to-r from-green-600 to-emerald-600 text-white font-bold py-4 px-12 rounded-full active:scale-95 transition text-lg">ENCAISSER {{ (dmBet*dmMultiplier).toFixed(0) }}€</button></div>
+                    <div v-if="dmGameEnded" class="text-center"><div :class="['text-2xl font-bold mb-4',dmGameWon?'text-green-400 pulse-win':'text-red-400']">{{ dmGameWon?'🎉 +' +(dmBet*dmMultiplier).toFixed(0)+'€':'💥 Perdu !' }}</div><button @click="resetDiamondMines" class="bg-gray-700 hover:bg-gray-600 text-white font-bold py-3 px-8 rounded-full transition">Rejouer</button></div>
+                    <div class="mt-8 pt-6 border-t border-gray-700 grid grid-cols-3 gap-4 text-center"><div><p class="text-xs text-gray-400 uppercase">Diamants</p><p class="text-xl font-bold text-blue-400">{{ dmDiamondsFound }}/{{ dmTotalDiamonds }}</p></div><div><p class="text-xs text-gray-400 uppercase">Bombes</p><p class="text-xl font-bold text-red-400">{{ dmBombsHit }}</p></div><div><p class="text-xs text-gray-400 uppercase">Restantes</p><p class="text-xl font-bold text-yellow-400">{{ dmTiles.filter(t=>!t.revealed).length }}</p></div></div>
+                </div>
+            </div>
+        </transition>
+
+        <!-- BLACKJACK -->
+        <transition name="fade" mode="out-in">
+            <div v-if="currentPage==='blackjack'" key="blackjack" class="max-w-5xl mx-auto">
+                <div class="bg-gray-800/80 backdrop-blur-md border border-green-500/30 rounded-3xl p-8 shadow-2xl">
+                    <div class="flex justify-between items-center mb-8"><h2 class="text-3xl font-bold text-green-400">🃏 Blackjack</h2><div class="flex gap-6"><div class="text-right"><p class="text-xs text-gray-400 uppercase">Mise</p><p class="text-2xl font-bold text-yellow-400">{{ bjCurrentBet }}€</p></div><div class="text-right"><p class="text-xs text-gray-400 uppercase">Gain potentiel</p><p class="text-2xl font-bold text-green-400">{{ bjCurrentBet*2 }}€</p></div></div></div>
+                    <div class="mb-8"><div class="flex items-center gap-2 mb-3"><span class="text-gray-400 text-sm">CROUPIER</span><span class="bg-gray-700 px-3 py-1 rounded-full text-xs font-bold">{{ dealerScore }}</span></div><div class="flex gap-3 flex-wrap"><div v-for="(card,index) in bjDealerHand" :key="'dealer-'+index" class="w-20 h-28 bg-white rounded-lg flex items-center justify-center text-3xl font-bold shadow-lg card-flip" :class="index===0&&!bjGameEnded&&!bjDealerRevealed?'bg-gradient-to-br from-purple-600 to-purple-800 text-white':'text-gray-900'">{{ index===0&&!bjGameEnded&&!bjDealerRevealed?'🂠':getCardSymbol(card) }}</div></div></div>
+                    <div v-if="bjGameMessage" :class="['text-center text-2xl font-bold mb-8 py-4 rounded-xl',bjGameMessage.includes('Gagné')?'bg-green-500/20 text-green-400':bjGameMessage.includes('Perdu')?'bg-red-500/20 text-red-400':'bg-yellow-500/20 text-yellow-400']">{{ bjGameMessage }}</div>
+                    <div class="mb-8"><div class="flex items-center gap-2 mb-3"><span class="text-gray-400 text-sm">VOUS</span><span class="bg-gray-700 px-3 py-1 rounded-full text-xs font-bold">{{ playerScore }}</span></div><div class="flex gap-3 flex-wrap"><div v-for="(card,index) in bjPlayerHand" :key="'player-'+index" class="w-20 h-28 bg-white rounded-lg flex items-center justify-center text-3xl font-bold shadow-lg card-flip text-gray-900">{{ getCardSymbol(card) }}</div></div></div>
+                    <div v-if="!bjGameStarted" class="text-center"><label class="block text-gray-400 text-sm mb-3">Votre Mise</label><div class="flex gap-4 items-center justify-center mb-6"><input type="number" v-model="bjBetAmount" :min="10" :max="balance" class="bg-gray-700 border border-gray-600 rounded-lg px-4 py-3 text-white font-bold w-32" /><button @click="bjBetAmount=Math.min(balance,bjBetAmount+10)" class="bg-gray-700 hover:bg-gray-600 px-4 py-3 rounded-lg font-bold">+</button><button @click="bjBetAmount=Math.max(10,bjBetAmount-10)" class="bg-gray-700 hover:bg-gray-600 px-4 py-3 rounded-lg font-bold">-</button><button @click="bjBetAmount=balance" class="bg-purple-600 hover:bg-purple-500 px-4 py-3 rounded-lg font-bold">MAX</button></div><button @click="startBlackjack" :disabled="bjBetAmount>balance||bjBetAmount<10" class="bg-gradient-to-r from-green-600 to-emerald-600 text-white font-bold py-4 px-12 rounded-full shadow-lg active:scale-95 transition disabled:opacity-50 text-lg">DISTRIBUER ({{ bjBetAmount }}€)</button></div>
+                    <div v-if="bjGameStarted&&!bjGameEnded&&bjPlayerTurn" class="flex justify-center gap-4 flex-wrap"><button @click="bjHit" class="bg-gradient-to-r from-blue-600 to-cyan-600 text-white font-bold py-3 px-8 rounded-full shadow-lg transition text-lg">PIGER</button><button @click="bjStand" class="bg-gradient-to-r from-red-600 to-orange-600 text-white font-bold py-3 px-8 rounded-full shadow-lg transition text-lg">RESTER</button><button @click="bjDoubleDown" :disabled="balance<bjCurrentBet||bjPlayerHand.length!==2" class="bg-gradient-to-r from-purple-600 to-pink-600 text-white font-bold py-3 px-8 rounded-full shadow-lg transition text-lg disabled:opacity-50">DOUBLER</button></div>
+                    <div v-if="bjGameEnded" class="text-center"><button @click="resetBlackjack" class="bg-gray-700 hover:bg-gray-600 text-white font-bold py-3 px-8 rounded-full transition text-lg">Nouvelle Partie</button></div>
+                    <div class="mt-8 pt-6 border-t border-gray-700 grid grid-cols-2 md:grid-cols-4 gap-4 text-center"><div><p class="text-xs text-gray-400 uppercase">Parties</p><p class="text-xl font-bold text-white">{{ bjGamesPlayed }}</p></div><div><p class="text-xs text-gray-400 uppercase">Victoires</p><p class="text-xl font-bold text-green-400">{{ bjWins }}</p></div><div><p class="text-xs text-gray-400 uppercase">Défaites</p><p class="text-xl font-bold text-red-400">{{ bjLosses }}</p></div><div><p class="text-xs text-gray-400 uppercase">Blackjacks</p><p class="text-xl font-bold text-yellow-400">{{ bjBlackjacks }}</p></div></div>
+                </div>
+            </div>
+        </transition>
+
+    </main>
+    <footer class="relative z-10 bg-gray-900 border-t border-gray-800 mt-12 py-6"><div class="container mx-auto px-6 text-center text-gray-500 text-sm"><p>&copy; 2025 Casino Royal. Jouez responsablement. 18+</p></div></footer>
+</div>
+<script>
+    const{createApp}=Vue;
+    createApp({
+        data(){return{
+            currentPage:'home',balance:1000,
+            gameCards:[
+                {id:'roulette',icon:'🎡',name:'Roulette',color:'#ef4444',desc:'Misez sur rouge, noir, un numéro ou une douzaine. La roue décide !'},
+                {id:'poker',icon:'♠️',name:'Poker Texas Hold\'em',color:'#eab308',desc:'2 cartes en main, 5 communes. La meilleure combinaison gagne !'},
+                {id:'chicken-road',icon:'🐔',name:'Chicken Road',color:'#f97316',desc:'Aidez la poule à traverser la route. Cash out avant l\'écrasement !'},
+                {id:'diamond-mines',icon:'💎',name:'Diamond Mines',color:'#3b82f6',desc:'Trouvez les diamants, évitez les bombes, multipliez vos gains.'},
+                {id:'blackjack',icon:'🃏',name:'Blackjack',color:'#22c55e',desc:'Atteignez 21 sans dépasser. Le classique des casinos.'},
+            ],
+            isSlotSpinning:false,slotReels:[{symbol:'🍒'},{symbol:'🍒'},{symbol:'🍒'}],
+            slotSymbols:['🍒','🍇','💎','7️⃣','🍋'],slotMessage:'',slotWin:false,slotLastWin:0,
+            crBet:50,crGameStarted:false,crGameEnded:false,crCurrentLane:0,crSquished:false,crWon:false,crDeathLane:-1,crMessage:'',crBestWin:0,crLanes:[],
+            dmBet:50,dmGameStarted:false,dmGameEnded:false,dmGameWon:false,dmTiles:[],dmDiamondsFound:0,dmBombsHit:0,dmMultiplier:1.0,dmTotalDiamonds:5,
+            bjBetAmount:50,bjCurrentBet:0,bjDeck:[],bjPlayerHand:[],bjDealerHand:[],bjPlayerTurn:true,bjDealerRevealed:false,bjGameMessage:'',bjGameStarted:false,bjGameEnded:false,bjGamesPlayed:0,bjWins:0,bjLosses:0,bjBlackjacks:0,
+            rlBets:[],rlSelectedChip:10,rlSpinning:false,rlWheelAngle:0,rlResult:null,rlResultColor:'',rlResultParity:'',rlMessage:'',rlWon:false,rlRounds:0,rlWins:0,rlLosses:0,rlBestWin:0,
+            rlChips:[{value:5,bg:'#dc2626',border:'#fca5a5',text:'#fff'},{value:10,bg:'#2563eb',border:'#93c5fd',text:'#fff'},{value:25,bg:'#16a34a',border:'#86efac',text:'#fff'},{value:50,bg:'#7c3aed',border:'#c4b5fd',text:'#fff'},{value:100,bg:'#92400e',border:'#fcd34d',text:'#fcd34d'}],
+            rlRedNumbers:[1,3,5,7,9,12,14,16,18,19,21,23,25,27,30,32,34,36],
+            rlOutsideBets:[{key:'red',label:'🔴 Rouge',bg:'rgba(220,38,38,.4)',color:'#fca5a5',mult:2},{key:'black',label:'⚫ Noir',bg:'rgba(31,41,55,.8)',color:'#d1d5db',mult:2},{key:'even',label:'Pair',bg:'rgba(37,99,235,.3)',color:'#93c5fd',mult:2},{key:'odd',label:'Impair',bg:'rgba(124,58,237,.3)',color:'#c4b5fd',mult:2},{key:'low',label:'1–18',bg:'rgba(22,163,74,.3)',color:'#86efac',mult:2},{key:'high',label:'19–36',bg:'rgba(234,179,8,.3)',color:'#fde68a',mult:2},{key:'dozen1',label:'1ère Douzaine',bg:'rgba(220,38,38,.2)',color:'#fca5a5',mult:3},{key:'dozen2',label:'2ème Douzaine',bg:'rgba(37,99,235,.2)',color:'#93c5fd',mult:3},{key:'dozen3',label:'3ème Douzaine',bg:'rgba(124,58,237,.2)',color:'#c4b5fd',mult:3}],
+            pkBetAmount:50,pkCurrentBet:0,pkPot:0,pkPlayerHand:[],pkDealerHand:[],pkCommunity:[],pkDeck:[],pkStage:'',pkGameStarted:false,pkGameEnded:false,pkMessage:'',pkWon:false,pkPlayerRank:'',pkDealerRank:'',pkGamesPlayed:0,pkWins:0,pkLosses:0,pkBestWin:0,
+            pkChips:[{value:5,bg:'#dc2626',border:'#fca5a5',text:'#fff'},{value:10,bg:'#2563eb',border:'#93c5fd',text:'#fff'},{value:25,bg:'#16a34a',border:'#86efac',text:'#fff'},{value:50,bg:'#7c3aed',border:'#c4b5fd',text:'#fff'},{value:100,bg:'#92400e',border:'#fcd34d',text:'#fcd34d'}],
+        }},
+        computed:{
+            crMultiplier(){if(!this.crCurrentLane)return 1.0;return parseFloat(Math.pow(1.45,this.crCurrentLane).toFixed(2));},
+            crMaxMultiplier(){return parseFloat(Math.pow(1.45,(this.crLanes.length||8)).toFixed(2));},
+            crPotentialWin(){return Math.floor(this.crBet*this.crMultiplier);},
+            crProgressPercent(){if(!this.crLanes.length)return 0;return Math.min(100,(this.crCurrentLane/this.crLanes.length)*100);},
+            crChickenBottom(){return 60+(this.crCurrentLane*56)-10;},
+            dealerScore(){if(!this.bjDealerRevealed&&this.bjGameStarted&&!this.bjGameEnded)return this.bjCalcScore([this.bjDealerHand[1]]);return this.bjCalcScore(this.bjDealerHand);},
+            playerScore(){return this.bjCalcScore(this.bjPlayerHand);},
+            rlTotalBet(){return this.rlBets.reduce((s,b)=>s+b.amount,0);},
+        },
+        methods:{
+            spinSlot(){if(this.balance<10){this.slotMessage='Solde insuffisant!';return;}this.balance-=10;this.isSlotSpinning=true;this.slotMessage='';this.slotWin=false;let s=0;const iv=setInterval(()=>{this.slotReels=this.slotReels.map(()=>({symbol:this.slotSymbols[Math.floor(Math.random()*this.slotSymbols.length)]}));if(++s>=20){clearInterval(iv);this.finalizeSlot();}},100);},
+            finalizeSlot(){this.isSlotSpinning=false;const r1=this.slotSymbols[Math.floor(Math.random()*this.slotSymbols.length)],r2=this.slotSymbols[Math.floor(Math.random()*this.slotSymbols.length)],r3=this.slotSymbols[Math.floor(Math.random()*this.slotSymbols.length)];this.slotReels=[{symbol:r1},{symbol:r2},{symbol:r3}];if(r1===r2&&r2===r3){const p=r1==='7️⃣'?500:r1==='💎'?200:50;this.balance+=p;this.slotLastWin=p;this.slotMessage='JACKPOT ! +'+p+'€';this.slotWin=true;}else if(r1===r2||r2===r3||r1===r3){this.balance+=15;this.slotLastWin=15;this.slotMessage='Petit gain ! +15€';this.slotWin=true;}else{this.slotLastWin=0;this.slotMessage='Perdu, réessayez !';this.slotWin=false;}},
+            crBuildLanes(){const e=['🚗','🚙','🚕','🚌','🚎','🏎️','🚐','🛻'];this.crLanes=Array.from({length:8},(_,i)=>({multiplier:parseFloat(Math.pow(1.45,i+1).toFixed(2)),cars:Array.from({length:1+Math.floor(i/2)},(_,ci)=>({emoji:e[Math.floor(Math.random()*e.length)],dir:(ci+i)%2===0?'left':'right',speed:1.2+Math.random()*1.5-(i*.08),delay:-(Math.random()*3)}))}));},
+            crStart(){if(this.crBet>this.balance||this.crBet<10)return;this.balance-=this.crBet;this.crBuildLanes();this.crGameStarted=true;this.crGameEnded=false;this.crCurrentLane=0;this.crSquished=false;this.crWon=false;this.crDeathLane=-1;this.crMessage='🐔 La poule est prête !';},
+            crStep(){if(!this.crGameStarted||this.crGameEnded)return;const li=this.crCurrentLane;if(Math.random()<(0.18+li*.065)){this.crDeathLane=li;this.crSquished=true;this.crGameEnded=true;this.crGameStarted=false;this.crMessage='💥 Écrasée sur la voie '+(li+1)+' !';}else{this.crCurrentLane++;if(this.crCurrentLane>=this.crLanes.length){this.crCashOut(true);}else{this.crMessage='✅ Voie '+this.crCurrentLane+' franchie ! Potentiel: '+Math.floor(this.crBet*this.crMultiplier)+'€';}}},
+            crCashOut(auto=false){const w=Math.floor(this.crBet*this.crMultiplier);this.balance+=w;this.crWon=true;this.crGameEnded=true;this.crGameStarted=false;if(w>this.crBestWin)this.crBestWin=w;this.crMessage=auto?'🏆 INCROYABLE ! +'+w+'€ !':'💰 Cash out ! +'+w+'€ (x'+this.crMultiplier.toFixed(2)+')';},
+            crReset(){this.crGameStarted=false;this.crGameEnded=false;this.crCurrentLane=0;this.crSquished=false;this.crWon=false;this.crDeathLane=-1;this.crMessage='';this.crLanes=[];},
+            dmInitTiles(){const p=Array(25).fill(false);for(let i=0;i<this.dmTotalDiamonds;i++)p[i]=true;for(let i=p.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[p[i],p[j]]=[p[j],p[i]];}this.dmTiles=p.map(d=>({isDiamond:d,revealed:false}));},
+            startDiamondMines(){if(this.dmBet>this.balance||this.dmBet<10)return;this.balance-=this.dmBet;this.dmGameStarted=true;this.dmGameEnded=false;this.dmGameWon=false;this.dmDiamondsFound=0;this.dmBombsHit=0;this.dmMultiplier=1.0;this.dmInitTiles();},
+            clickTile(i){if(this.dmGameEnded||this.dmTiles[i].revealed)return;this.dmTiles[i].revealed=true;if(this.dmTiles[i].isDiamond){this.dmDiamondsFound++;this.dmMultiplier*=1.25;if(this.dmDiamondsFound===this.dmTotalDiamonds)this.dmCashOut();}else{this.dmBombsHit++;this.dmGameEnded=true;this.dmGameWon=false;this.dmTiles.forEach(t=>t.revealed=true);}},
+            dmCashOut(){this.balance+=Math.floor(this.dmBet*this.dmMultiplier);this.dmGameEnded=true;this.dmGameWon=true;this.dmTiles.forEach(t=>t.revealed=true);},
+            resetDiamondMines(){this.dmGameStarted=false;this.dmGameEnded=false;this.dmGameWon=false;this.dmDiamondsFound=0;this.dmBombsHit=0;this.dmMultiplier=1.0;},
+            bjCreateDeck(){const s=['♠','♥','♦','♣'],v=['2','3','4','5','6','7','8','9','10','J','Q','K','A'];const d=s.flatMap(x=>v.map(y=>({suit:x,value:y})));for(let i=d.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[d[i],d[j]]=[d[j],d[i]];}return d;},
+            getCardSymbol(c){return c.value+c.suit;},
+            bjCalcScore(h){if(!h||!h.length)return 0;let s=0,a=0;for(const c of h){if(!c)continue;if(['J','Q','K'].includes(c.value))s+=10;else if(c.value==='A'){s+=11;a++;}else s+=parseInt(c.value);}while(s>21&&a>0){s-=10;a--;}return s;},
+            startBlackjack(){if(this.bjBetAmount>this.balance||this.bjBetAmount<10)return;this.bjCurrentBet=this.bjBetAmount;this.balance-=this.bjCurrentBet;this.bjDeck=this.bjCreateDeck();this.bjPlayerHand=[this.bjDeck.pop(),this.bjDeck.pop()];this.bjDealerHand=[this.bjDeck.pop(),this.bjDeck.pop()];this.bjPlayerTurn=true;this.bjDealerRevealed=false;this.bjGameMessage='';this.bjGameStarted=true;this.bjGameEnded=false;this.bjGamesPlayed++;if(this.playerScore===21){this.bjBlackjacks++;this.bjWins++;this.balance+=this.bjCurrentBet*2.5;this.bjGameMessage='🎉 BLACKJACK ! +'+(this.bjCurrentBet*2.5)+'€';this.bjGameEnded=true;this.bjDealerRevealed=true;}},
+            bjHit(){this.bjPlayerHand.push(this.bjDeck.pop());if(this.playerScore>21){this.bjLosses++;this.bjGameMessage='💥 Perdu ! Dépassé 21';this.bjGameEnded=true;this.bjDealerRevealed=true;}},
+            bjStand(){this.bjPlayerTurn=false;this.bjDealerRevealed=true;while(this.dealerScore<17)this.bjDealerHand.push(this.bjDeck.pop());if(this.dealerScore>21){this.bjWins++;this.balance+=this.bjCurrentBet*2;this.bjGameMessage='🎉 Gagné !';}else if(this.playerScore>this.dealerScore){this.bjWins++;this.balance+=this.bjCurrentBet*2;this.bjGameMessage='🎉 Gagné !';}else if(this.playerScore<this.dealerScore){this.bjLosses++;this.bjGameMessage='💥 Perdu !';}else{this.balance+=this.bjCurrentBet;this.bjGameMessage='🤝 Égalité !';}this.bjGameEnded=true;},
+            bjDoubleDown(){if(this.balance<this.bjCurrentBet||this.bjPlayerHand.length!==2)return;this.balance-=this.bjCurrentBet;this.bjCurrentBet*=2;this.bjPlayerHand.push(this.bjDeck.pop());if(this.playerScore>21){this.bjLosses++;this.bjGameMessage='💥 Perdu !';this.bjGameEnded=true;this.bjDealerRevealed=true;}else this.bjStand();},
+            resetBlackjack(){this.bjGameStarted=false;this.bjGameEnded=false;this.bjPlayerHand=[];this.bjDealerHand=[];this.bjCurrentBet=0;this.bjGameMessage='';this.bjPlayerTurn=true;this.bjDealerRevealed=false;},
+            // ROULETTE
+            rlPlaceBet(type,value){if(this.rlSpinning)return;const amount=this.rlSelectedChip;if(this.rlTotalBet+amount>this.balance)return;const ex=this.rlBets.find(b=>b.type===type&&b.value===value);if(ex){ex.amount+=amount;}else{this.rlBets.push({type,value,amount});}},
+            rlGetBetOnNumber(n){return this.rlBets.find(b=>b.type==='number'&&b.value===n);},
+            rlGetBetOnOutside(key){return this.rlBets.find(b=>b.type===key);},
+            rlClearBets(){if(!this.rlSpinning){this.rlBets=[];this.rlMessage='';}},
+            rlSpin(){
+                if(this.rlSpinning||this.rlTotalBet===0||this.rlTotalBet>this.balance)return;
+                this.balance-=this.rlTotalBet;this.rlSpinning=true;this.rlMessage='';
+                const result=Math.floor(Math.random()*37);
+                const spins=5+Math.random()*5;
+                this.rlWheelAngle+=360*spins+(result*(360/37));
+                setTimeout(()=>{
+                    this.rlSpinning=false;this.rlResult=result;this.rlRounds++;
+                    if(result===0){this.rlResultColor='green';this.rlResultParity='';}
+                    else if(this.rlRedNumbers.includes(result)){this.rlResultColor='red';this.rlResultParity=result%2===0?'Pair':'Impair';}
+                    else{this.rlResultColor='black';this.rlResultParity=result%2===0?'Pair':'Impair';}
+                    let totalWin=0;
+                    for(const bet of this.rlBets){
+                        let win=0;
+                        if(bet.type==='number'&&bet.value===result)win=bet.amount*36;
+                        else if(bet.type==='red'&&this.rlResultColor==='red')win=bet.amount*2;
+                        else if(bet.type==='black'&&this.rlResultColor==='black')win=bet.amount*2;
+                        else if(bet.type==='even'&&result!==0&&result%2===0)win=bet.amount*2;
+                        else if(bet.type==='odd'&&result%2===1)win=bet.amount*2;
+                        else if(bet.type==='low'&&result>=1&&result<=18)win=bet.amount*2;
+                        else if(bet.type==='high'&&result>=19&&result<=36)win=bet.amount*2;
+                        else if(bet.type==='dozen1'&&result>=1&&result<=12)win=bet.amount*3;
+                        else if(bet.type==='dozen2'&&result>=13&&result<=24)win=bet.amount*3;
+                        else if(bet.type==='dozen3'&&result>=25&&result<=36)win=bet.amount*3;
+                        totalWin+=win;
+                    }
+                    this.balance+=totalWin;
+                    if(totalWin>0){this.rlWon=true;this.rlWins++;if(totalWin>this.rlBestWin)this.rlBestWin=totalWin;this.rlMessage='🎉 Sorti: '+result+' ! Vous gagnez '+totalWin+'€ !';}
+                    else{this.rlWon=false;this.rlLosses++;this.rlMessage='❌ Sorti: '+result+'. Perdu !';}
+                    this.rlBets=[];
+                },4200);
+            },
+            // POKER
+            pkCreateDeck(){const s=['♠','♥','♦','♣'],v=['2','3','4','5','6','7','8','9','10','J','Q','K','A'];const d=s.flatMap(x=>v.map(y=>({suit:x,value:y,hidden:false})));for(let i=d.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[d[i],d[j]]=[d[j],d[i]];}return d;},
+            pkCardColor(c){if(!c||c.hidden)return'';return['♥','♦'].includes(c.suit)?'red':'black';},
+            pkCardVal(v){if(v==='A')return 14;if(v==='K')return 13;if(v==='Q')return 12;if(v==='J')return 11;return parseInt(v);},
+            pkDeal(){
+                if(this.pkBetAmount>this.balance||this.pkBetAmount<5)return;
+                this.balance-=this.pkBetAmount;this.pkCurrentBet=this.pkBetAmount;this.pkPot=this.pkBetAmount;
+                this.pkDeck=this.pkCreateDeck();
+                this.pkPlayerHand=[this.pkDeck.pop(),this.pkDeck.pop()];
+                this.pkDealerHand=[{...this.pkDeck.pop(),hidden:true},{...this.pkDeck.pop(),hidden:true}];
+                this.pkCommunity=[];this.pkGameStarted=true;this.pkGameEnded=false;
+                this.pkMessage='';this.pkWon=false;this.pkStage='preflop';this.pkPlayerRank='';this.pkDealerRank='';this.pkGamesPlayed++;
+            },
+            pkCheck(){this.pkCommunity=[this.pkDeck.pop(),this.pkDeck.pop(),this.pkDeck.pop()];this.pkStage='flop';this.pkUpdateRanks();},
+            pkCheckTurn(){this.pkCommunity.push(this.pkDeck.pop());this.pkStage='turn';this.pkUpdateRanks();},
+            pkCheckRiver(){this.pkCommunity.push(this.pkDeck.pop());this.pkStage='river';this.pkUpdateRanks();},
+            pkRaise(){
+                if(this.pkCurrentBet>this.balance)return;
+                this.balance-=this.pkCurrentBet;this.pkPot+=this.pkCurrentBet;this.pkCurrentBet=Math.floor(this.pkCurrentBet*1.5);
+                if(this.pkStage==='preflop')this.pkCheck();
+                else if(this.pkStage==='flop')this.pkCheckTurn();
+                else if(this.pkStage==='turn')this.pkCheckRiver();
+                else this.pkShowdown();
+            },
+            pkFold(){this.pkGameEnded=true;this.pkGameStarted=false;this.pkWon=false;this.pkDealerHand=this.pkDealerHand.map(c=>({...c,hidden:false}));this.pkLosses++;this.pkMessage='🏳️ Vous vous couchez.';},
+            pkShowdown(){
+                this.pkDealerHand=this.pkDealerHand.map(c=>({...c,hidden:false}));
+                this.pkGameEnded=true;this.pkGameStarted=false;
+                const pScore=this.pkEval([...this.pkPlayerHand,...this.pkCommunity]);
+                const dScore=this.pkEval([...this.pkDealerHand,...this.pkCommunity]);
+                this.pkPlayerRank=pScore.name;this.pkDealerRank=dScore.name;
+                if(pScore.rank>dScore.rank||(pScore.rank===dScore.rank&&pScore.tb>dScore.tb)){
+                    this.balance+=this.pkPot*2;this.pkWon=true;this.pkWins++;
+                    if(this.pkPot*2>this.pkBestWin)this.pkBestWin=this.pkPot*2;
+                    this.pkMessage='🎉 Vous gagnez ! '+pScore.name+' bat '+dScore.name+'. +'+(this.pkPot*2)+'€ !';
+                }else if(pScore.rank===dScore.rank&&pScore.tb===dScore.tb){
+                    this.balance+=this.pkPot;this.pkMessage='🤝 Égalité ! Mise remboursée. '+pScore.name;
+                }else{
+                    this.pkLosses++;this.pkMessage='💥 Perdu ! '+dScore.name+' bat '+pScore.name+'.';
+                }
+            },
+            pkUpdateRanks(){if(this.pkCommunity.length>0)this.pkPlayerRank=this.pkEval([...this.pkPlayerHand,...this.pkCommunity]).name;},
+            pkEval(cards){
+                const combos=this.pkCombo(cards,Math.min(5,cards.length));
+                let best={rank:-1,tb:0,name:'Carte Haute'};
+                for(const h of combos){const s=this.pkScore(h);if(s.rank>best.rank||(s.rank===best.rank&&s.tb>best.tb))best=s;}
+                return best;
+            },
+            pkCombo(arr,k){if(k===arr.length)return[arr];if(k===1)return arr.map(x=>[x]);const r=[];for(let i=0;i<=arr.length-k;i++){const rest=this.pkCombo(arr.slice(i+1),k-1);for(const c of rest)r.push([arr[i],...c]);}return r;},
+            pkScore(hand){
+                const vals=hand.map(c=>this.pkCardVal(c.value)).sort((a,b)=>b-a);
+                const suits=hand.map(c=>c.suit);
+                const isF=suits.every(s=>s===suits[0]);
+                const isS=vals.length>=5&&vals.every((v,i)=>i===0||vals[i-1]-v===1);
+                const cnt={};vals.forEach(v=>cnt[v]=(cnt[v]||0)+1);
+                const freq=Object.values(cnt).sort((a,b)=>b-a);
+                const top=vals[0];
+                if(isF&&isS)return{rank:8,tb:top,name:'Quinte Flush'+(top===14?' Royale':'')};
+                if(freq[0]===4)return{rank:7,tb:top,name:'Carré'};
+                if(freq[0]===3&&freq[1]===2)return{rank:6,tb:top,name:'Full House'};
+                if(isF)return{rank:5,tb:top,name:'Couleur'};
+                if(isS)return{rank:4,tb:top,name:'Suite'};
+                if(freq[0]===3)return{rank:3,tb:top,name:'Brelan'};
+                if(freq[0]===2&&freq[1]===2)return{rank:2,tb:top,name:'Double Paire'};
+                if(freq[0]===2)return{rank:1,tb:top,name:'Paire'};
+                return{rank:0,tb:top,name:'Carte Haute'};
+            },
+            pkReset(){this.pkGameStarted=false;this.pkGameEnded=false;this.pkPlayerHand=[];this.pkDealerHand=[];this.pkCommunity=[];this.pkPot=0;this.pkCurrentBet=0;this.pkMessage='';this.pkPlayerRank='';this.pkDealerRank='';this.pkStage='';},
+        }
+    }).mount('#app');
+</script>
+</body>
+</html>
