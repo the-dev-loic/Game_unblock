@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Roulette Casino — 2 Joueurs</title>
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;900&family=Crimson+Text:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet">
+    <link href="style.css" rel="stylesheet">
+    <style>
+
+    </style>
+</head>
+<body>
+
+<div id="winnerBanner" class="winner-banner"></div>
+
+<header>
+    <h1>ROULETTE EUROPÉENNE</h1>
+    <p>Casino — 2 Joueurs</p>
+</header>
+
+<div class="game-layout">
+
+    <!-- PLAYER 1 PANEL -->
+    <div class="player-panel p1" id="panel1">
+        <div class="player-name"><div class="dot"></div><span id="p1name">Joueur 1</span></div>
+        <div class="balance-label">Solde</div>
+        <div class="balance-amount" id="p1balance">1 000 €</div>
+        <div class="divider"></div>
+        <div class="bets-list">
+            <div class="bets-list-title">Mises en cours</div>
+            <div id="p1bets-list"></div>
+            <div class="total-bet"><span>Total</span><span id="p1total">0 €</span></div>
+        </div>
+        <div class="divider"></div>
+        <div class="last-result" id="p1last" style="display:none"></div>
+        <div class="result-history">
+            <div class="result-history-title">Historique</div>
+            <div class="history-dots" id="p1history"></div>
+        </div>
+    </div>
+
+    <!-- CENTER -->
+    <div class="center-area">
+
+        <!-- WHEEL -->
+        <div class="wheel-container">
+            <canvas id="wheelCanvas" width="300" height="300"></canvas>
+        </div>
+
+        <!-- CONTROLS BAR -->
+        <div class="controls-bar">
+            <div class="turn-indicator" id="turnIndicator">Tour de Joueur 1</div>
+            <div class="chips-row">
+                <div class="chip chip-1" onclick="selectChip(1)">1</div>
+                <div class="chip chip-5" onclick="selectChip(5)">5</div>
+                <div class="chip chip-10" onclick="selectChip(10)">10</div>
+                <div class="chip chip-25" onclick="selectChip(25)">25</div>
+                <div class="chip chip-50" onclick="selectChip(50)">50</div>
+                <div class="chip chip-100" onclick="selectChip(100)">100</div>
+                <div class="chip chip-500" onclick="selectChip(500)">500</div>
+            </div>
+            <div class="bet-mode-display" id="betModeDisplay">Mise : 10 €</div>
+            <button class="btn btn-clear" onclick="clearBets()">Effacer</button>
+            <button class="btn btn-spin" id="spinBtn" onclick="spinRoulette()">LANCER</button>
+        </div>
+
+        <!-- STATUS -->
+        <div class="status-msg" id="statusMsg">Placez vos mises puis lancez la bille</div>
+
+        <!-- BETTING TABLE -->
+        <div class="table-container">
+            <div class="betting-table" id="bettingTable"></div>
+        </div>
+
+    </div>
+
+    <!-- PLAYER 2 PANEL -->
+    <div class="player-panel p2" id="panel2">
+        <div class="player-name"><div class="dot"></div><span id="p2name">Joueur 2</span></div>
+        <div class="balance-label">Solde</div>
+        <div class="balance-amount" id="p2balance">1 000 €</div>
+        <div class="divider"></div>
+        <div class="bets-list">
+            <div class="bets-list-title">Mises en cours</div>
+            <div id="p2bets-list"></div>
+            <div class="total-bet"><span>Total</span><span id="p2total">0 €</span></div>
+        </div>
+        <div class="divider"></div>
+        <div class="last-result" id="p2last" style="display:none"></div>
+        <div class="result-history">
+            <div class="result-history-title">Historique</div>
+            <div class="history-dots" id="p2history"></div>
+        </div>
+    </div>
+
+</div>
+
+<!-- Phase overlays -->
+<div class="phase-overlay" id="setupOverlay">
+    <div class="phase-box">
+        <h2>⚜ ROULETTE EUROPÉENNE ⚜</h2>
+        <p style="margin-bottom:20px">La roulette la plus fidèle — roue à 37 numéros, toutes les mises officielles</p>
+        <div style="margin-bottom:16px">
+            <label style="display:block;margin-bottom:8px;font-size:0.9rem;color:rgba(245,230,200,0.7)">Nom Joueur 1</label>
+            <input id="nameInput1" value="Joueur 1" style="background:#1a1a1a;border:1px solid rgba(212,168,67,0.4);color:var(--cream);padding:8px 12px;border-radius:4px;font-family:'Crimson Text',serif;font-size:1rem;width:100%;text-align:center">
+        </div>
+        <div style="margin-bottom:16px">
+            <label style="display:block;margin-bottom:8px;font-size:0.9rem;color:rgba(245,230,200,0.7)">Nom Joueur 2</label>
+            <input id="nameInput2" value="Joueur 2" style="background:#1a1a1a;border:1px solid rgba(212,168,67,0.4);color:var(--cream);padding:8px 12px;border-radius:4px;font-family:'Crimson Text',serif;font-size:1rem;width:100%;text-align:center">
+        </div>
+        <div style="margin-bottom:20px">
+            <label style="display:block;margin-bottom:8px;font-size:0.9rem;color:rgba(245,230,200,0.7)">Mise de départ</label>
+            <select id="startBalance" style="background:#1a1a1a;border:1px solid rgba(212,168,67,0.4);color:var(--gold);padding:8px 12px;border-radius:4px;font-family:'Cinzel',serif;font-size:1rem;width:100%">
+                <option value="500">500 €</option>
+                <option value="1000" selected>1 000 €</option>
+                <option value="2000">2 000 €</option>
+                <option value="5000">5 000 €</option>
+            </select>
+        </div>
+        <button class="btn btn-spin" onclick="startGame()" style="width:100%;font-size:1rem;padding:14px">COMMENCER LA PARTIE</button>
+    </div>
+</div>
+
+<div class="phase-overlay" id="resultOverlay" style="display:none">
+    <div class="phase-box">
+        <h2 id="resultTitle">Résultat</h2>
+        <div class="phase-number" id="resultNumber">0</div>
+        <p id="resultDesc" style="margin-top:12px"></p>
+        <div id="resultDetails" style="margin-top:16px;text-align:left;font-size:0.9rem;line-height:1.8"></div>
+        <div style="display:flex;gap:12px;margin-top:24px;justify-content:center;flex-wrap:wrap">
+            <button class="btn btn-next" id="nextTurnBtn" onclick="nextTurn()">Tour suivant →</button>
+        </div>
+    </div>
+</div>
+
+<script src="rou.js">
+
+</script>
+</body>
+</html>

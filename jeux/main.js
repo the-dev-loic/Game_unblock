@@ -23,7 +23,8 @@ const menuData = {
         }
     },
     "chess": {
-        "chess a 2": "chess/chess.html"
+        "chess a 2": "chess/chess.html",
+        "chess a 2 v2": "chess/chess_v3.html"
     },
     "combat_2_joueur": {
         "a_debug": {
