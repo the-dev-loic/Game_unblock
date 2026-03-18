@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cosmic Cookie Clicker</title>
+    <link href="style.css" rel="stylesheet">
+    <style>
+
+    </style>
+</head>
+<body>
+
+<header>
+    <div class="logo">COSMIC CLICKER</div>
+    <div class="global-stats">
+        <div class="stat-box">🌟 Starchips: <span id="starchipsEl">0</span></div>
+        <div class="stat-box">🚀 Multiplier: x<span id="multiplierEl">1.0</span></div>
+    </div>
+</header>
+
+<div class="game-layout">
+    <!-- Left: Clicking -->
+    <div class="click-zone">
+        <div class="score-display">
+            <div class="cookie-count"><span id="cookieCount">0</span> Cookies</div>
+            <div class="cps-display">per second: <span id="cpsDisplay">0.0</span></div>
+        </div>
+
+        <div class="big-cookie-container" id="bigCookieBtn">
+            <div class="big-cookie"></div>
+        </div>
+
+        <button id="rebirthBtn" class="btn-rebirth hidden" style="margin-top: 50px; font-size: 0.8rem; padding: 10px 20px;">
+            ASCEND (Rebirth)
+        </button>
+    </div>
+
+    <!-- Right: Shop -->
+    <div class="upgrade-zone">
+        <div class="tabs">
+            <button class="tab-btn active" onclick="switchTab('buildings')">BUILDINGS</button>
+            <button class="tab-btn" onclick="switchTab('upgrades')">UPGRADES</button>
+        </div>
+
+        <div id="buildingsList" class="scroll-area">
+            <!-- Buildings injected via JS -->
+        </div>
+
+        <div id="upgradesList" class="scroll-area hidden">
+            <!-- Upgrades injected via JS -->
+        </div>
+    </div>
+</div>
+
+<!-- Rebirth Modal -->
+<div id="rebirthModal" class="rebirth-overlay hidden">
+    <div class="rebirth-modal">
+        <div class="rebirth-title">ASCENSION</div>
+        <p>Reset your progress to gain <strong>Starchips</strong>.</p>
+        <p>Each Starchip increases cookie production by <strong>10%</strong>.</p>
+
+        <div class="rebirth-stat">
+            Current Cookies: <span id="modalCurrentCookies">0</span><br>
+            Starchips to Gain: <span id="modalStarchipsGain" class="prestige-currency">0</span>
+        </div>
+
+        <button class="btn-rebirth" id="confirmRebirthBtn">ASCEND NOW</button>
+        <br>
+        <button class="btn-cancel" onclick="closeRebirthModal()">Cancel</button>
+    </div>
+</div>
+
+<script src="cooki.js">
+
+
+</script>
+</body>
+</html>
+

@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tactical FPS</title>
+    <link href="Shooter_3.css" rel="stylesheet">
+    <style>
+
+    </style>
+    <script type="importmap">
+        {"imports":{"three":"https://unpkg.com/three@0.160.0/build/three.module.js","three/addons/":"https://unpkg.com/three@0.160.0/examples/jsm/"}}
+    </script>
+</head>
+<body>
+<div id="damage-overlay"></div>
+<div id="ui-layer">
+    <div class="hud-top">
+        <div>SCORE: <span id="score">0</span></div>
+        <div>ENNEMIS: <span id="enemies-left">0</span></div>
+    </div>
+    <div id="wave-display">VAGUE <span id="wave-num">1</span></div>
+    <div id="crosshair"></div>
+    <div id="health-bar-container"><div id="health-fill"></div></div>
+    <div id="ammo-display">10 / 30</div>
+    <div id="reload-bar-wrap"><div id="reload-bar"></div></div>
+    <div id="kill-feed"></div>
+</div>
+<div id="menu-overlay">
+    <h1>TACTICAL FPS</h1>
+    <div class="subtitle">MISSION : ÉLIMINER TOUS LES ENNEMIS</div>
+    <div class="keys-hint">
+        W A S D — Se déplacer dans la direction du regard<br>
+        SHIFT — Courir &nbsp;|&nbsp; ESPACE — Sauter<br>
+        CLIC GAUCHE — Tirer &nbsp;|&nbsp; R — Recharger<br>
+        Ramassez les caisses jaunes pour des munitions
+    </div>
+    <div class="menu-buttons"><button id="btn-start">▶ DÉMARRER</button></div>
+</div>
+
+<script type="module" src="Shooter_3.js">
+
+</script>
+</body>
+</html>

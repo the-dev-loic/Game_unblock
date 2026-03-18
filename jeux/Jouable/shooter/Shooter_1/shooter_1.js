@@ -1,0 +1,371 @@
+import * as THREE from 'three';
+import { PointerLockControls } from 'three/addons/controls/PointerLockControls.js';
+
+// --- Configuration Globale ---
+const CONFIG = {
+    speed: 15,
+    jumpForce: 10,
+    gravity: 30,
+    enemySpeed: 8,
+    spawnRate: 2000, // ms
+    maxHealth: 100
+};
+
+// --- Variables d'État ---
+let camera, scene, renderer, controls;
+let moveForward = false, moveBackward = false, moveLeft = false, moveRight = false;
+let prevTime = performance.now();
+let velocity = new THREE.Vector3();
+let direction = new THREE.Vector3();
+
+let enemies = [];
+let bullets = [];
+let particles = [];
+let score = 0;
+let health = CONFIG.maxHealth;
+let wave = 1;
+let isGameActive = false;
+let lastSpawnTime = 0;
+
+// Éléments DOM
+const scoreEl = document.getElementById('score');
+const waveEl = document.getElementById('wave');
+const healthFill = document.getElementById('health-fill');
+const menuOverlay = document.getElementById('menu-overlay');
+const startBtn = document.getElementById('start-btn');
+const titleText = document.getElementById('title-text');
+const damageOverlay = document.getElementById('damage-overlay');
+
+// Arme
+let gunMesh;
+let gunRecoil = 0;
+
+init();
+animate();
+
+function init() {
+    // 1. Scène & Caméra
+    scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x050505);
+    scene.fog = new THREE.FogExp2(0x050505, 0.015);
+
+    camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+    camera.position.y = 1.6; // Hauteur des yeux
+
+    // 2. Lumière
+    const light = new THREE.HemisphereLight(0xffffff, 0x444444, 1);
+    light.position.set(0, 20, 0);
+    scene.add(light);
+
+    const dirLight = new THREE.DirectionalLight(0xffffff, 0.5);
+    dirLight.position.set(0, 20, 10);
+    scene.add(dirLight);
+
+    // 3. Sol (Grille Néon)
+    const gridHelper = new THREE.GridHelper(200, 50, 0x00ff00, 0x004400);
+    scene.add(gridHelper);
+
+    const floorGeo = new THREE.PlaneGeometry(200, 200);
+    const floorMat = new THREE.MeshBasicMaterial({ color: 0x001100, side: THREE.DoubleSide });
+    const floor = new THREE.Mesh(floorGeo, floorMat);
+    floor.rotation.x = -Math.PI / 2;
+    floor.position.y = -0.1;
+    scene.add(floor);
+
+    // 4. Contrôles
+    controls = new PointerLockControls(camera, document.body);
+
+    startBtn.addEventListener('click', () => {
+        controls.lock();
+    });
+
+    controls.addEventListener('lock', () => {
+        if (health <= 0) resetGame();
+        isGameActive = true;
+        menuOverlay.style.display = 'none';
+    });
+
+    controls.addEventListener('unlock', () => {
+        isGameActive = false;
+        if (health > 0) {
+            menuOverlay.style.display = 'flex';
+            titleText.innerText = "PAUSE";
+            startBtn.innerText = "REPRENDRE";
+        }
+    });
+
+    scene.add(controls.getObject());
+
+    // 5. Gestion Clavier
+    const onKeyDown = function (event) {
+        switch (event.code) {
+            case 'ArrowUp': case 'KeyW': moveForward = true; break;
+            case 'ArrowLeft': case 'KeyA': moveLeft = true; break;
+            case 'ArrowDown': case 'KeyS': moveBackward = true; break;
+            case 'ArrowRight': case 'KeyD': moveRight = true; break;
+        }
+    };
+
+    const onKeyUp = function (event) {
+        switch (event.code) {
+            case 'ArrowUp': case 'KeyW': moveForward = false; break;
+            case 'ArrowLeft': case 'KeyA': moveLeft = false; break;
+            case 'ArrowDown': case 'KeyS': moveBackward = false; break;
+            case 'ArrowRight': case 'KeyD': moveRight = false; break;
+        }
+    };
+
+    document.addEventListener('keydown', onKeyDown);
+    document.addEventListener('keyup', onKeyUp);
+    document.addEventListener('mousedown', shoot);
+
+    // 6. Création de l'arme (Modèle simple)
+    createGun();
+
+    // 7. Renderer
+    renderer = new THREE.WebGLRenderer({ antialias: true });
+    renderer.setPixelRatio(window.devicePixelRatio);
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    document.body.appendChild(renderer.domElement);
+
+    window.addEventListener('resize', onWindowResize);
+}
+
+function createGun() {
+    const gunGeo = new THREE.BoxGeometry(0.1, 0.1, 0.4);
+    const gunMat = new THREE.MeshStandardMaterial({ color: 0x333333, roughness: 0.2 });
+    gunMesh = new THREE.Mesh(gunGeo, gunMat);
+
+    // Positionner l'arme devant la caméra (bas droite)
+    gunMesh.position.set(0.2, -0.2, -0.3);
+    camera.add(gunMesh);
+}
+
+function spawnEnemy() {
+    if (!isGameActive) return;
+
+    const geo = new THREE.BoxGeometry(1, 1, 1);
+    const mat = new THREE.MeshStandardMaterial({ color: 0xff0000, emissive: 0x550000 });
+    const enemy = new THREE.Mesh(geo, mat);
+
+    // Spawn aléatoire autour du joueur
+    const angle = Math.random() * Math.PI * 2;
+    const radius = 20 + Math.random() * 10;
+    enemy.position.x = controls.getObject().position.x + Math.cos(angle) * radius;
+    enemy.position.z = controls.getObject().position.z + Math.sin(angle) * radius;
+    enemy.position.y = 0.5;
+
+    scene.add(enemy);
+    enemies.push(enemy);
+}
+
+function shoot() {
+    if (!isGameActive || health <= 0) return;
+
+    // Effet de recul visuel
+    gunRecoil = 0.2;
+
+    // Raycasting pour le tir
+    const raycaster = new THREE.Raycaster();
+    raycaster.setFromCamera(new THREE.Vector2(0, 0), camera);
+
+    // Créer un projectile visuel (Laser)
+    const laserGeo = new THREE.BufferGeometry();
+    const startPos = new THREE.Vector3();
+    gunMesh.getWorldPosition(startPos);
+    // Ajuster le départ du laser pour qu'il vienne du bout de l'arme
+    const direction = new THREE.Vector3();
+    camera.getWorldDirection(direction);
+
+    const endPos = new THREE.Vector3().copy(startPos).add(direction.clone().multiplyScalar(100));
+
+    // Vérifier les collisions avec les ennemis
+    const intersects = raycaster.intersectObjects(enemies);
+    let hitPoint = endPos;
+
+    if (intersects.length > 0) {
+        const hit = intersects[0];
+        hitPoint = hit.point;
+
+        // Tuer l'ennemi
+        const enemyIndex = enemies.indexOf(hit.object);
+        if (enemyIndex > -1) {
+            createExplosion(hit.object.position, 0xff0000);
+            scene.remove(hit.object);
+            enemies.splice(enemyIndex, 1);
+            score += 100;
+            scoreEl.innerText = score;
+
+            // Augmenter la difficulté
+            if (score % 500 === 0) {
+                wave++;
+                waveEl.innerText = wave;
+                CONFIG.enemySpeed += 1;
+            }
+        }
+    }
+
+    // Dessiner le laser temporaire
+    const points = [startPos, hitPoint];
+    const laserGeom = new THREE.BufferGeometry().setFromPoints(points);
+    const laserMat = new THREE.LineBasicMaterial({ color: 0x00ff00, linewidth: 2 });
+    const laserLine = new THREE.Line(laserGeom, laserMat);
+    scene.add(laserLine);
+
+    // Supprimer le laser après 50ms
+    setTimeout(() => scene.remove(laserLine), 50);
+}
+
+function createExplosion(position, color) {
+    const particleCount = 15;
+    const geo = new THREE.BoxGeometry(0.2, 0.2, 0.2);
+    const mat = new THREE.MeshBasicMaterial({ color: color });
+
+    for (let i = 0; i < particleCount; i++) {
+        const mesh = new THREE.Mesh(geo, mat);
+        mesh.position.copy(position);
+
+        // Vitesse aléatoire
+        mesh.userData.velocity = new THREE.Vector3(
+            (Math.random() - 0.5) * 10,
+            (Math.random() - 0.5) * 10,
+            (Math.random() - 0.5) * 10
+        );
+        mesh.userData.life = 1.0; // Durée de vie
+
+        scene.add(mesh);
+        particles.push(mesh);
+    }
+}
+
+function takeDamage() {
+    health -= 20;
+    healthFill.style.width = `${Math.max(0, health)}%`;
+
+    // Flash rouge
+    damageOverlay.style.opacity = 0.8;
+    setTimeout(() => damageOverlay.style.opacity = 0, 200);
+
+    if (health <= 0) {
+        gameOver();
+    }
+}
+
+function gameOver() {
+    isGameActive = false;
+    controls.unlock();
+    menuOverlay.style.display = 'flex';
+    titleText.innerText = "GAME OVER";
+    titleText.style.color = "#ff0000";
+    startBtn.innerText = "RECOMMENCER";
+}
+
+function resetGame() {
+    score = 0;
+    wave = 1;
+    health = CONFIG.maxHealth;
+    CONFIG.enemySpeed = 8;
+
+    scoreEl.innerText = score;
+    waveEl.innerText = wave;
+    healthFill.style.width = '100%';
+    titleText.style.color = "#fff";
+
+    // Supprimer tous les ennemis
+    enemies.forEach(e => scene.remove(e));
+    enemies = [];
+
+    controls.getObject().position.set(0, 1.6, 0);
+}
+
+function onWindowResize() {
+    camera.aspect = window.innerWidth / window.innerHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize(window.innerWidth, window.innerHeight);
+}
+
+function animate() {
+    requestAnimationFrame(animate);
+
+    const time = performance.now();
+    const delta = (time - prevTime) / 1000;
+    prevTime = time;
+
+    if (isGameActive) {
+        // --- Mouvement Joueur ---
+        velocity.x -= velocity.x * 10.0 * delta;
+        velocity.z -= velocity.z * 10.0 * delta;
+        velocity.y -= CONFIG.gravity * delta; // Gravité
+
+        direction.z = Number(moveForward) - Number(moveBackward);
+        direction.x = Number(moveRight) - Number(moveLeft);
+        direction.normalize();
+
+        if (moveForward || moveBackward) velocity.z -= direction.z * CONFIG.speed * 10.0 * delta;
+        if (moveLeft || moveRight) velocity.x -= direction.x * CONFIG.speed * 10.0 * delta;
+
+        controls.moveRight(-velocity.x * delta);
+        controls.moveForward(-velocity.z * delta);
+        controls.getObject().position.y += velocity.y * delta;
+
+        // Collision sol d
+        if (controls.getObject().position.y < 1.6) {
+            velocity.y = 0;
+            controls.getObject().position.y = 1.6;
+        }
+
+        // --- Animation Arme ---
+        if (gunRecoil > 0) {
+            gunRecoil -= delta * 2;
+            if (gunRecoil < 0) gunRecoil = 0;
+        }
+        // Bobbing (balancement en marchant)
+        const bobOffset = (moveForward || moveBackward || moveLeft || moveRight)
+            ? Math.sin(time * 0.015) * 0.005
+            : 0;
+
+        gunMesh.position.z = -0.3 + gunRecoil;
+        gunMesh.position.y = -0.2 + bobOffset;
+
+        // --- Gestion Ennemis ---
+        // Spawn
+        if (time - lastSpawnTime > Math.max(500, CONFIG.spawnRate - (wave * 100))) {
+            spawnEnemy();
+            lastSpawnTime = time;
+        }
+
+        const playerPos = controls.getObject().position;
+
+        for (let i = enemies.length - 1; i >= 0; i--) {
+            const enemy = enemies[i];
+
+            // Faire regarder l'ennemi vers le joueur
+            enemy.lookAt(playerPos.x, 0.5, playerPos.z);
+
+            // Avancer vers le joueur
+            const dirToPlayer = new THREE.Vector3().subVectors(playerPos, enemy.position).normalize();
+            enemy.position.add(dirToPlayer.multiplyScalar(CONFIG.enemySpeed * delta));
+
+            // Collision avec le joueur
+            if (enemy.position.distanceTo(playerPos) < 1.0) {
+                takeDamage();
+                // Repousser l'ennemi légèrement
+                enemy.position.sub(dirToPlayer.multiplyScalar(2));
+            }
+        }
+
+        // --- Gestion Particules ---
+        for (let i = particles.length - 1; i >= 0; i--) {
+            const p = particles[i];
+            p.userData.life -= delta * 2;
+            p.position.add(p.userData.velocity.clone().multiplyScalar(delta));
+            p.scale.multiplyScalar(0.9); // Rétrécir
+
+            if (p.userData.life <= 0) {
+                scene.remove(p);
+                particles.splice(i, 1);
+            }
+        }
+    }
+
+    renderer.render(scene, camera);}

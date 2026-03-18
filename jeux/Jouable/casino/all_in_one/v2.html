@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Casino Royal - Tous les Jeux</title>
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+    <link href="style.css" rel="stylesheet">
+    <style>
+
+    </style>
+</head>
+<body class="bg-gray-900 text-white overflow-x-hidden">
+<div id="app" class="relative min-h-screen">
+    <div class="fixed inset-0 z-0">
+        <img src="https://image.qwenlm.ai/public_source/b1228ef7-0bc5-44c8-8085-37d25c7ddf46/1f06ab945-cf2a-402f-bfbd-f8869cc4090f.png" class="w-full h-full object-cover opacity-40">
+        <div class="absolute inset-0 bg-gradient-to-b from-gray-900/80 via-gray-900/60 to-gray-900"></div>
+    </div>
+    <nav class="relative z-10 container mx-auto px-4 py-5 flex justify-between items-center flex-wrap gap-3">
+        <button @click="currentPage='home'" class="text-2xl font-bold text-purple-400 neon-text tracking-wider">CASINO<span class="text-white">ROYAL</span></button>
+        <div class="flex flex-wrap gap-4 text-sm font-semibold text-gray-300">
+            <button @click="currentPage='home'"          :class="currentPage==='home'?'text-purple-400':'hover:text-purple-400'">Accueil</button>
+            <button @click="currentPage='roulette'"      :class="currentPage==='roulette'?'text-red-400':'hover:text-red-400'">🎡 Roulette</button>
+            <button @click="currentPage='poker'"         :class="currentPage==='poker'?'text-yellow-400':'hover:text-yellow-400'">♠️ Poker</button>
+            <button @click="currentPage='chicken-road'"  :class="currentPage==='chicken-road'?'text-orange-400':'hover:text-orange-400'">🐔 Chicken</button>
+            <button @click="currentPage='diamond-mines'" :class="currentPage==='diamond-mines'?'text-blue-400':'hover:text-blue-400'">💎 Mines</button>
+            <button @click="currentPage='blackjack'"     :class="currentPage==='blackjack'?'text-green-400':'hover:text-green-400'">🃏 Blackjack</button>
+        </div>
+        <div class="bg-gray-800/80 backdrop-blur px-4 py-2 rounded-full border border-purple-500/30">
+            <span class="text-gray-400 text-sm">Solde: </span><span class="text-green-400 font-bold">{{ balance }} €</span>
+        </div>
+    </nav>
+    <main class="relative z-10 container mx-auto px-4 py-8">
+
+        <!-- HOME -->
+        <transition name="fade" mode="out-in">
+            <div v-if="currentPage==='home'" key="home" class="flex flex-col items-center">
+                <section class="w-full max-w-4xl mb-16 text-center">
+                    <h1 class="text-5xl md:text-7xl font-extrabold mb-4 text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-400 neon-text">Tentez votre chance</h1>
+                    <p class="text-gray-400 text-lg mb-12 max-w-2xl mx-auto">6 jeux, des frissons garantis. Commencez par le bandit manchot !</p>
+                    <div class="bg-gray-800/80 backdrop-blur-md border border-purple-500/30 rounded-3xl p-8 shadow-2xl max-w-lg mx-auto relative overflow-hidden">
+                        <div class="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-purple-500 via-pink-500 to-purple-500"></div>
+                        <div class="flex justify-center space-x-4 mb-8 bg-black/50 p-6 rounded-xl border border-gray-700">
+                            <div v-for="(reel,i) in slotReels" :key="i" class="w-20 h-24 bg-white rounded-lg flex items-center justify-center text-5xl shadow-inner">
+                                <span :class="{'blur-spin':isSlotSpinning}">{{ reel.symbol }}</span>
+                            </div>
+                        </div>
+                        <div class="flex justify-between items-center">
+                            <div class="text-left"><p class="text-xs text-gray-400 uppercase tracking-widest">Dernier Gain</p><p class="text-xl font-bold" :class="slotWin?'text-green-400':'text-gray-400'">{{ slotLastWin }} €</p></div>
+                            <button @click="spinSlot" :disabled="isSlotSpinning||balance<10" class="bg-gradient-to-r from-purple-600 to-pink-600 text-white font-bold py-3 px-10 rounded-full shadow-lg active:scale-95 transition disabled:opacity-50">{{ isSlotSpinning?'...':'TOURNER (10€)' }}</button>
+                        </div>
+                        <div v-if="slotMessage" :class="['mt-4 text-sm font-bold',slotWin?'text-green-400':'text-red-400']">{{ slotMessage }}</div>
+                    </div>
+                </section>
+                <section class="w-full max-w-6xl">
+                    <h2 class="text-3xl font-bold mb-8 text-white border-l-4 border-purple-500 pl-4">Nos Jeux</h2>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                        <div v-for="g in gameCards" :key="g.id" @click="currentPage=g.id" class="group relative bg-gray-800/60 backdrop-blur rounded-2xl overflow-hidden card-hover transition duration-300 cursor-pointer" :style="'border:1px solid '+g.color+'44'">
+                            <div class="absolute inset-0 opacity-0 group-hover:opacity-100 transition duration-300" :style="'background:linear-gradient(135deg,'+g.color+'22,transparent)'"></div>
+                            <div class="p-7 relative z-10">
+                                <div class="w-14 h-14 rounded-full flex items-center justify-center mb-5 text-3xl" :style="'background:'+g.color+'22'">{{ g.icon }}</div>
+                                <h3 class="text-xl font-bold text-white mb-2">{{ g.name }}</h3>
+                                <p class="text-gray-400 text-sm mb-5">{{ g.desc }}</p>
+                                <button class="w-full text-white font-semibold py-2.5 rounded-lg transition flex items-center justify-center gap-2 text-sm" :style="'background:'+g.color+'33'">Jouer Maintenant →</button>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+            </div>
+        </transition>
+
+        <!-- ROULETTE -->
+        <transition name="fade" mode="out-in">
+            <div v-if="currentPage==='roulette'" key="roulette" class="max-w-5xl mx-auto">
+                <div class="bg-gray-800/80 backdrop-blur-md border border-red-500/30 rounded-3xl p-8 shadow-2xl">
+                    <div class="flex justify-between items-center mb-8">
+                        <div><h2 class="text-3xl font-extrabold text-red-400 neon-red">🎡 Roulette</h2><p class="text-gray-400 text-sm mt-1">Misez, tournez, gagnez !</p></div>
+                        <div class="text-right"><p class="text-xs text-gray-400 uppercase">Mise totale</p><p class="text-2xl font-bold text-yellow-400">{{ rlTotalBet }} €</p></div>
+                    </div>
+                    <div class="flex flex-col lg:flex-row gap-8">
+                        <!-- Wheel -->
+                        <div class="flex flex-col items-center gap-4 flex-shrink-0">
+                            <div class="relative">
+                                <div class="roulette-wheel" :style="{transform:'rotate('+rlWheelAngle+'deg)'}">
+                                    <div style="width:18px;height:18px;border-radius:50%;background:radial-gradient(circle at 35% 35%,#fff,#d1d5db);box-shadow:0 2px 6px rgba(0,0,0,.6);position:absolute;top:14px;left:50%;transform:translateX(-50%);"></div>
+                                </div>
+                                <div class="absolute inset-0 flex items-center justify-center pointer-events-none">
+                                    <div class="w-14 h-14 rounded-full bg-gray-900 border-4 border-yellow-600 flex items-center justify-center text-xl font-black text-yellow-400 shadow-lg">{{ rlResult !== null ? rlResult : '?' }}</div>
+                                </div>
+                                <div class="absolute -top-3 left-1/2 -translate-x-1/2 w-0 h-0" style="border-left:8px solid transparent;border-right:8px solid transparent;border-top:20px solid #fbbf24;"></div>
+                            </div>
+                            <div v-if="rlResult !== null" :class="['text-lg font-bold px-4 py-2 rounded-full',rlResultColor==='red'?'bg-red-500/20 text-red-300':rlResultColor==='black'?'bg-gray-500/20 text-gray-200':'bg-green-500/20 text-green-300']">
+                                {{ rlResult }} — {{ rlResultColor==='red'?'Rouge':rlResultColor==='black'?'Noir':'Zéro' }}<span v-if="rlResultParity"> — {{ rlResultParity }}</span>
+                            </div>
+                            <button @click="rlSpin" :disabled="rlSpinning||rlTotalBet===0||rlTotalBet>balance" class="bg-gradient-to-r from-red-600 to-rose-600 text-white font-extrabold py-3 px-10 rounded-full shadow-lg transition disabled:opacity-50 active:scale-95">{{ rlSpinning?'🎡 En cours...':'TOURNER !' }}</button>
+                            <button @click="rlClearBets" :disabled="rlSpinning" class="text-sm text-gray-400 hover:text-red-400 transition">Effacer les mises</button>
+                        </div>
+                        <!-- Table -->
+                        <div class="flex-1">
+                            <div class="mb-4">
+                                <p class="text-xs text-gray-400 uppercase mb-2 tracking-widest">Valeur de la mise</p>
+                                <div class="flex gap-2 flex-wrap">
+                                    <div v-for="chip in rlChips" :key="chip.value" @click="rlSelectedChip=chip.value" class="roulette-chip" :style="'background:'+chip.bg+';border-color:'+chip.border+';color:'+chip.text+(rlSelectedChip===chip.value?';box-shadow:0 0 14px '+chip.bg:'')">{{ chip.value }}</div>
+                                </div>
+                            </div>
+                            <div class="mb-4">
+                                <p class="text-xs text-gray-400 uppercase mb-2 tracking-widest">Numéros (0–36)</p>
+                                <div class="grid gap-1" style="grid-template-columns:repeat(13,1fr)">
+                                    <button @click="rlPlaceBet('number',0)" class="aspect-square rounded text-xs font-bold text-green-300 hover:scale-110 transition" style="background:rgba(22,163,74,.4)">0</button>
+                                    <button v-for="n in 36" :key="n" @click="rlPlaceBet('number',n)" :class="['aspect-square rounded text-xs font-bold transition hover:scale-110 relative',rlRedNumbers.includes(n)?'text-white':'text-gray-200']" :style="'background:'+(rlRedNumbers.includes(n)?'rgba(220,38,38,.6)':'rgba(31,41,55,.8)')+(rlGetBetOnNumber(n)?';outline:2px solid #fbbf24':'')">
+                                        {{ n }}<span v-if="rlGetBetOnNumber(n)" class="absolute -top-1 -right-1 w-3 h-3 rounded-full bg-yellow-400" style="font-size:.4rem"></span>
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                                <button v-for="ob in rlOutsideBets" :key="ob.key" @click="rlPlaceBet(ob.key,null)" class="roulette-bet-btn text-sm font-bold py-3 px-2 rounded-xl transition" :style="'background:'+ob.bg+';color:'+ob.color+(rlGetBetOnOutside(ob.key)?';outline:2px solid #fbbf24':'')">
+                                    {{ ob.label }}<span class="block text-xs opacity-70">x{{ ob.mult }}</span>
+                                </button>
+                            </div>
+                            <div v-if="rlBets.length" class="mt-4 bg-gray-700/50 rounded-xl p-3">
+                                <p class="text-xs text-gray-400 uppercase mb-2">Mises en cours</p>
+                                <div class="flex flex-wrap gap-2">
+                                    <span v-for="(b,i) in rlBets" :key="i" @click="rlBets.splice(i,1)" class="text-xs bg-gray-600 px-2 py-1 rounded-full cursor-pointer hover:bg-red-600 transition">{{ b.type==='number'?'N°'+b.value:b.type }}: {{ b.amount }}€ ×</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div v-if="rlMessage" :class="['mt-6 text-center text-xl font-bold py-3 rounded-xl',rlWon?'bg-green-500/20 text-green-400 pulse-win':'bg-red-500/20 text-red-400']">{{ rlMessage }}</div>
+                    <div class="mt-6 pt-6 border-t border-gray-700 grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
+                        <div><p class="text-xs text-gray-400 uppercase">Tours</p><p class="text-xl font-bold text-white">{{ rlRounds }}</p></div>
+                        <div><p class="text-xs text-gray-400 uppercase">Victoires</p><p class="text-xl font-bold text-green-400">{{ rlWins }}</p></div>
+                        <div><p class="text-xs text-gray-400 uppercase">Défaites</p><p class="text-xl font-bold text-red-400">{{ rlLosses }}</p></div>
+                        <div><p class="text-xs text-gray-400 uppercase">Meilleur Gain</p><p class="text-xl font-bold text-yellow-400">{{ rlBestWin }}€</p></div>
+                    </div>
+                </div>
+            </div>
+        </transition>
+
+        <!-- POKER -->
+        <transition name="fade" mode="out-in">
+            <div v-if="currentPage==='poker'" key="poker" class="max-w-4xl mx-auto">
+                <div class="bg-gray-800/80 backdrop-blur-md border border-yellow-500/30 rounded-3xl p-8 shadow-2xl">
+                    <div class="flex justify-between items-center mb-6">
+                        <div><h2 class="text-3xl font-extrabold text-yellow-400 neon-yellow">♠️ Poker — Texas Hold'em</h2><p class="text-gray-400 text-sm mt-1">2 cartes en main + 5 communes. Battez le dealer !</p></div>
+                        <div class="flex gap-6">
+                            <div class="text-right"><p class="text-xs text-gray-400 uppercase">Pot</p><p class="text-2xl font-bold text-yellow-400">{{ pkPot }}€</p></div>
+                            <div class="text-right"><p class="text-xs text-gray-400 uppercase">Raise</p><p class="text-2xl font-bold text-orange-400">{{ pkCurrentBet }}€</p></div>
+                        </div>
+                    </div>
+                    <!-- Table -->
+                    <div class="rounded-2xl p-6 mb-6" style="background:linear-gradient(135deg,#14532d,#166534,#14532d);border:3px solid #92400e;box-shadow:inset 0 0 40px rgba(0,0,0,.4)">
+                        <!-- Dealer -->
+                        <div class="mb-6">
+                            <div class="flex items-center gap-2 mb-3"><span class="text-gray-300 text-sm font-semibold uppercase tracking-widest">🤖 Dealer</span><span v-if="pkDealerRank" class="poker-hand-rank">{{ pkDealerRank }}</span></div>
+                            <div class="flex gap-3 flex-wrap">
+                                <div v-for="(c,i) in pkDealerHand" :key="'d'+i" :class="['poker-card poker-card-deal',c.hidden?'hidden':pkCardColor(c)]">
+                                    <template v-if="!c.hidden"><span style="font-size:.7rem;position:absolute;top:4px;left:5px;font-weight:900;">{{ c.value }}{{ c.suit }}</span><span>{{ c.suit }}</span></template>
+                                </div>
+                            </div>
+                        </div>
+                        <!-- Community -->
+                        <div class="mb-6">
+                            <p class="text-gray-400 text-xs uppercase tracking-widest mb-3">Cartes Communes</p>
+                            <div class="flex gap-3 flex-wrap">
+                                <div v-for="(c,i) in pkCommunity" :key="'com'+i" :class="['poker-card poker-card-deal',pkCardColor(c)]">
+                                    <span style="font-size:.7rem;position:absolute;top:4px;left:5px;font-weight:900;">{{ c.value }}{{ c.suit }}</span><span>{{ c.suit }}</span>
+                                </div>
+                                <div v-for="p in (5-pkCommunity.length)" :key="'ph'+p" class="poker-card" style="background:#0f4c2a;border:2px dashed rgba(255,255,255,.15)"></div>
+                            </div>
+                        </div>
+                        <!-- Player -->
+                        <div>
+                            <div class="flex items-center gap-2 mb-3"><span class="text-white text-sm font-semibold uppercase tracking-widest">👤 Vous</span><span v-if="pkPlayerRank" class="poker-hand-rank">{{ pkPlayerRank }}</span></div>
+                            <div class="flex gap-3 flex-wrap">
+                                <div v-for="(c,i) in pkPlayerHand" :key="'p'+i" :class="['poker-card poker-card-deal',pkCardColor(c)]">
+                                    <span style="font-size:.7rem;position:absolute;top:4px;left:5px;font-weight:900;">{{ c.value }}{{ c.suit }}</span><span>{{ c.suit }}</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div v-if="pkMessage" :class="['text-center text-xl font-bold py-3 px-4 rounded-xl mb-5',pkWon?'bg-green-500/20 text-green-400 pulse-win':pkMessage.includes('Égalité')?'bg-yellow-500/20 text-yellow-400':'bg-red-500/20 text-red-400']">{{ pkMessage }}</div>
+                    <!-- Pre-game -->
+                    <div v-if="!pkGameStarted&&!pkGameEnded" class="flex flex-col items-center gap-4">
+                        <div>
+                            <p class="text-gray-400 text-xs uppercase tracking-widest mb-2 text-center">Mise de départ (Ante)</p>
+                            <div class="flex gap-2 justify-center flex-wrap">
+                                <div v-for="chip in pkChips" :key="chip.value" @click="pkBetAmount=Math.min(balance,chip.value)" class="poker-chip" :style="'background:'+chip.bg+';border-color:'+chip.border+';color:'+chip.text+(pkBetAmount===chip.value?';box-shadow:0 0 12px '+chip.bg:'')">{{ chip.value }}</div>
+                            </div>
+                            <p class="text-center mt-3 text-white font-bold text-lg">Mise: {{ pkBetAmount }}€</p>
+                        </div>
+                        <button @click="pkDeal" :disabled="pkBetAmount>balance||pkBetAmount<5" class="action-btn bg-gradient-to-r from-yellow-500 to-amber-500 text-gray-900 text-lg">♠️ DISTRIBUER ({{ pkBetAmount }}€)</button>
+                    </div>
+                    <!-- Actions -->
+                    <div v-if="pkGameStarted&&!pkGameEnded" class="flex flex-wrap justify-center gap-3">
+                        <template v-if="pkStage==='preflop'">
+                            <button @click="pkCheck"  class="action-btn bg-blue-600 hover:bg-blue-500 text-white">CHECK → Voir Flop</button>
+                            <button @click="pkRaise"  :disabled="pkCurrentBet>balance" class="action-btn bg-yellow-500 hover:bg-yellow-400 text-gray-900">RAISE +{{ pkCurrentBet }}€</button>
+                            <button @click="pkFold"   class="action-btn bg-red-700 hover:bg-red-600 text-white">FOLD</button>
+                        </template>
+                        <template v-if="pkStage==='flop'">
+                            <button @click="pkCheckTurn" class="action-btn bg-blue-600 hover:bg-blue-500 text-white">CHECK → Voir Turn</button>
+                            <button @click="pkRaise"     :disabled="pkCurrentBet>balance" class="action-btn bg-yellow-500 hover:bg-yellow-400 text-gray-900">RAISE +{{ pkCurrentBet }}€</button>
+                            <button @click="pkFold"      class="action-btn bg-red-700 hover:bg-red-600 text-white">FOLD</button>
+                        </template>
+                        <template v-if="pkStage==='turn'">
+                            <button @click="pkCheckRiver" class="action-btn bg-blue-600 hover:bg-blue-500 text-white">CHECK → Voir River</button>
+                            <button @click="pkRaise"      :disabled="pkCurrentBet>balance" class="action-btn bg-yellow-500 hover:bg-yellow-400 text-gray-900">RAISE +{{ pkCurrentBet }}€</button>
+                            <button @click="pkFold"       class="action-btn bg-red-700 hover:bg-red-600 text-white">FOLD</button>
+                        </template>
+                        <template v-if="pkStage==='river'">
+                            <button @click="pkShowdown" class="action-btn bg-gradient-to-r from-yellow-500 to-amber-500 text-gray-900 text-lg">⚔️ SHOWDOWN !</button>
+                            <button @click="pkFold"     class="action-btn bg-red-700 hover:bg-red-600 text-white">FOLD</button>
+                        </template>
+                    </div>
+                    <div v-if="pkGameEnded" class="flex justify-center mt-4">
+                        <button @click="pkReset" class="action-btn bg-gray-700 hover:bg-gray-600 text-white text-lg">Nouvelle Partie</button>
+                    </div>
+                    <div class="mt-8 pt-6 border-t border-gray-700 grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
+                        <div><p class="text-xs text-gray-400 uppercase">Parties</p><p class="text-xl font-bold text-white">{{ pkGamesPlayed }}</p></div>
+                        <div><p class="text-xs text-gray-400 uppercase">Victoires</p><p class="text-xl font-bold text-green-400">{{ pkWins }}</p></div>
+                        <div><p class="text-xs text-gray-400 uppercase">Défaites</p><p class="text-xl font-bold text-red-400">{{ pkLosses }}</p></div>
+                        <div><p class="text-xs text-gray-400 uppercase">Meilleur Gain</p><p class="text-xl font-bold text-yellow-400">{{ pkBestWin }}€</p></div>
+                    </div>
+                </div>
+            </div>
+        </transition>
+
+        <!-- CHICKEN ROAD -->
+        <transition name="fade" mode="out-in">
+            <div v-if="currentPage==='chicken-road'" key="chicken-road" class="max-w-4xl mx-auto">
+                <div class="bg-gray-800/80 backdrop-blur-md border border-orange-500/30 rounded-3xl p-8 shadow-2xl">
+                    <div class="flex justify-between items-center mb-6"><div><h2 class="text-3xl font-extrabold text-orange-400 neon-orange">🐔 Chicken Road</h2><p class="text-gray-400 text-sm mt-1">Traversez les voies, cash out avant l'écrasement !</p></div><div class="flex items-center gap-6"><div class="text-right"><p class="text-xs text-gray-400 uppercase">Multiplicateur</p><p class="text-3xl font-extrabold" :class="crGameStarted?'text-orange-400':'text-gray-500'">x{{ crMultiplier.toFixed(2) }}</p></div><div class="text-right"><p class="text-xs text-gray-400 uppercase">Gain Potentiel</p><p class="text-2xl font-bold text-green-400">{{ crPotentialWin }}€</p></div></div></div>
+                    <div class="mb-6"><div class="flex justify-between text-xs text-gray-400 mb-1"><span>x1.00</span><span>Risque croissant</span><span>x{{ crMaxMultiplier.toFixed(2) }}</span></div><div class="w-full h-3 bg-gray-700 rounded-full overflow-hidden"><div class="multiplier-bar h-full" :style="{width:crProgressPercent+'%'}"></div></div></div>
+                    <div v-if="!crGameStarted" class="mb-6 flex gap-4 items-center flex-wrap"><div><label class="block text-gray-400 text-xs mb-1 uppercase tracking-widest">Mise</label><div class="flex gap-2 items-center"><input type="number" v-model="crBet" :min="10" :max="balance" class="bg-gray-700 border border-gray-600 rounded-lg px-4 py-3 text-white font-bold w-28" /><button @click="crBet=Math.min(balance,crBet+10)" class="bg-gray-700 hover:bg-gray-600 px-3 py-3 rounded-lg font-bold">+</button><button @click="crBet=Math.max(10,crBet-10)" class="bg-gray-700 hover:bg-gray-600 px-3 py-3 rounded-lg font-bold">−</button><button @click="crBet=balance" class="bg-purple-600 hover:bg-purple-500 px-3 py-3 rounded-lg font-bold text-sm">MAX</button></div></div><div class="flex gap-3 mt-4 md:mt-5"><button v-for="q in [10,25,50,100]" :key="q" @click="crBet=Math.min(balance,q)" class="bg-gray-700 hover:bg-orange-600 px-3 py-2 rounded-lg text-sm font-semibold transition">{{ q }}€</button></div></div>
+                    <div class="road-container mb-6" :style="{background:'#111827'}">
+                        <div class="absolute inset-0 flex flex-col-reverse">
+                            <div class="road-safe flex items-center justify-center relative" style="height:60px;flex-shrink:0;"><span class="text-green-300 font-bold text-xs uppercase tracking-widest z-10">🏠 DÉPART</span></div>
+                            <div v-for="(lane,i) in crLanes" :key="i" class="road-danger lane-dashes relative flex items-center" style="height:56px;flex-shrink:0;">
+                                <div class="absolute left-2 z-10"><span class="text-yellow-400 text-xs font-bold">x{{ lane.multiplier.toFixed(2) }}</span></div>
+                                <template v-if="crGameStarted||crGameEnded"><div v-for="(car,ci) in lane.cars" :key="ci" class="car" :class="car.dir==='left'?'car-left':'car-right'" :style="{animationDuration:car.speed+'s',animationDelay:car.delay+'s'}">{{ car.emoji }}</div></template>
+                                <div v-if="crCurrentLane>i" class="absolute inset-0 bg-green-500/10 border-l-4 border-green-500/40 z-10 flex items-center justify-end pr-3"><span class="text-green-400 text-lg">✓</span></div>
+                                <div v-if="crDeathLane===i" class="absolute inset-0 bg-red-500/30 z-10 flex items-center justify-end pr-3"><span class="text-red-400 text-lg">💥</span></div>
+                            </div>
+                            <div class="road-finish flex items-center justify-center relative" style="height:60px;flex-shrink:0;"><span class="text-yellow-900 font-extrabold text-sm uppercase tracking-widest z-10 bg-yellow-400/80 px-3 py-1 rounded-full">🏆 ARRIVÉE x{{ crMaxMultiplier.toFixed(2) }}</span></div>
+                        </div>
+                        <div class="chicken" :class="[crSquished?'chicken-squish':'',crWon?'chicken-win':'']" :style="{bottom:crChickenBottom+'px'}">{{ crSquished?'💀':'🐔' }}</div>
+                    </div>
+                    <div v-if="crMessage" :class="['text-center text-xl font-bold py-3 px-4 rounded-xl mb-4',crWon?'bg-green-500/20 text-green-400 pulse-win':crSquished?'bg-red-500/20 text-red-400':'bg-orange-500/20 text-orange-300']">{{ crMessage }}</div>
+                    <div class="flex gap-4 justify-center flex-wrap">
+                        <button v-if="!crGameStarted" @click="crStart" :disabled="crBet>balance||crBet<10" class="bg-gradient-to-r from-orange-500 to-red-500 text-white font-extrabold py-4 px-12 rounded-full shadow-lg active:scale-95 transition disabled:opacity-50 text-lg glow-orange">🐔 LANCER ({{ crBet }}€)</button>
+                        <button v-if="crGameStarted&&!crGameEnded" @click="crStep" class="bg-gradient-to-r from-orange-500 to-yellow-500 text-white font-extrabold py-4 px-10 rounded-full shadow-lg active:scale-95 transition text-lg">➡️ AVANCER</button>
+                        <button v-if="crGameStarted&&!crGameEnded&&crCurrentLane>0" @click="crCashOut()" class="bg-gradient-to-r from-green-600 to-emerald-500 text-white font-extrabold py-4 px-10 rounded-full shadow-lg active:scale-95 transition text-lg glow-green">💰 CASH OUT {{ crPotentialWin }}€</button>
+                        <button v-if="crGameEnded" @click="crReset" class="bg-gray-700 hover:bg-gray-600 text-white font-bold py-3 px-8 rounded-full transition text-lg">Rejouer</button>
+                    </div>
+                    <div class="mt-8 pt-6 border-t border-gray-700 grid grid-cols-2 md:grid-cols-4 gap-4 text-center"><div><p class="text-xs text-gray-400 uppercase">Voies</p><p class="text-xl font-bold text-orange-400">{{ crCurrentLane }}/{{ crLanes.length }}</p></div><div><p class="text-xs text-gray-400 uppercase">Mise</p><p class="text-xl font-bold text-yellow-400">{{ crBet }}€</p></div><div><p class="text-xs text-gray-400 uppercase">Potentiel</p><p class="text-xl font-bold text-green-400">{{ crPotentialWin }}€</p></div><div><p class="text-xs text-gray-400 uppercase">Meilleur</p><p class="text-xl font-bold text-purple-400">{{ crBestWin }}€</p></div></div>
+                </div>
+            </div>
+        </transition>
+
+        <!-- DIAMOND MINES -->
+        <transition name="fade" mode="out-in">
+            <div v-if="currentPage==='diamond-mines'" key="diamond-mines" class="max-w-4xl mx-auto">
+                <div class="bg-gray-800/80 backdrop-blur-md border border-blue-500/30 rounded-3xl p-8 shadow-2xl">
+                    <div class="flex justify-between items-center mb-8"><h2 class="text-3xl font-bold text-blue-400">💎 Diamond Mines</h2><div class="flex gap-4"><div class="text-right"><p class="text-xs text-gray-400 uppercase">Multiplicateur</p><p class="text-2xl font-bold text-yellow-400">x{{ dmMultiplier.toFixed(2) }}</p></div><div class="text-right"><p class="text-xs text-gray-400 uppercase">Potentiel</p><p class="text-2xl font-bold text-green-400">{{ (dmBet*dmMultiplier).toFixed(0) }}€</p></div></div></div>
+                    <div v-if="!dmGameStarted" class="mb-8"><label class="block text-gray-400 text-sm mb-2">Votre Mise</label><div class="flex gap-4 items-center"><input type="number" v-model="dmBet" :min="10" :max="balance" class="bg-gray-700 border border-gray-600 rounded-lg px-4 py-3 text-white font-bold w-32" /><button @click="dmBet=Math.min(balance,dmBet+10)" class="bg-gray-700 hover:bg-gray-600 px-4 py-3 rounded-lg font-bold">+</button><button @click="dmBet=Math.max(10,dmBet-10)" class="bg-gray-700 hover:bg-gray-600 px-4 py-3 rounded-lg font-bold">-</button><button @click="dmBet=balance" class="bg-purple-600 hover:bg-purple-500 px-4 py-3 rounded-lg font-bold">MAX</button></div></div>
+                    <div class="grid grid-cols-5 gap-3 mb-8" v-if="dmGameStarted||dmGameEnded"><button v-for="(tile,index) in dmTiles" :key="index" @click="clickTile(index)" :disabled="dmGameEnded||tile.revealed" :class="['aspect-square rounded-xl flex items-center justify-center text-4xl font-bold transition-all duration-300 tile-reveal',tile.revealed?(tile.isDiamond?'bg-green-500/80 border-2 border-green-400':'bg-red-500/80 border-2 border-red-400'):'bg-gray-700 hover:bg-gray-600 border-2 border-gray-600 hover:border-blue-400 cursor-pointer']"><span v-if="tile.revealed" class="card-flip">{{ tile.isDiamond?'💎':'💣' }}</span><span v-else class="text-gray-500">?</span></button></div>
+                    <div v-if="!dmGameStarted" class="text-center"><button @click="startDiamondMines" :disabled="dmBet>balance||dmBet<10" class="bg-gradient-to-r from-blue-600 to-cyan-600 text-white font-bold py-4 px-12 rounded-full shadow-lg active:scale-95 transition disabled:opacity-50 text-lg">COMMENCER ({{ dmBet }}€)</button></div>
+                    <div v-if="dmGameStarted&&!dmGameEnded" class="text-center"><button @click="dmCashOut" class="bg-gradient-to-r from-green-600 to-emerald-600 text-white font-bold py-4 px-12 rounded-full active:scale-95 transition text-lg">ENCAISSER {{ (dmBet*dmMultiplier).toFixed(0) }}€</button></div>
+                    <div v-if="dmGameEnded" class="text-center"><div :class="['text-2xl font-bold mb-4',dmGameWon?'text-green-400 pulse-win':'text-red-400']">{{ dmGameWon?'🎉 +' +(dmBet*dmMultiplier).toFixed(0)+'€':'💥 Perdu !' }}</div><button @click="resetDiamondMines" class="bg-gray-700 hover:bg-gray-600 text-white font-bold py-3 px-8 rounded-full transition">Rejouer</button></div>
+                    <div class="mt-8 pt-6 border-t border-gray-700 grid grid-cols-3 gap-4 text-center"><div><p class="text-xs text-gray-400 uppercase">Diamants</p><p class="text-xl font-bold text-blue-400">{{ dmDiamondsFound }}/{{ dmTotalDiamonds }}</p></div><div><p class="text-xs text-gray-400 uppercase">Bombes</p><p class="text-xl font-bold text-red-400">{{ dmBombsHit }}</p></div><div><p class="text-xs text-gray-400 uppercase">Restantes</p><p class="text-xl font-bold text-yellow-400">{{ dmTiles.filter(t=>!t.revealed).length }}</p></div></div>
+                </div>
+            </div>
+        </transition>
+
+        <!-- BLACKJACK -->
+        <transition name="fade" mode="out-in">
+            <div v-if="currentPage==='blackjack'" key="blackjack" class="max-w-5xl mx-auto">
+                <div class="bg-gray-800/80 backdrop-blur-md border border-green-500/30 rounded-3xl p-8 shadow-2xl">
+                    <div class="flex justify-between items-center mb-8"><h2 class="text-3xl font-bold text-green-400">🃏 Blackjack</h2><div class="flex gap-6"><div class="text-right"><p class="text-xs text-gray-400 uppercase">Mise</p><p class="text-2xl font-bold text-yellow-400">{{ bjCurrentBet }}€</p></div><div class="text-right"><p class="text-xs text-gray-400 uppercase">Gain potentiel</p><p class="text-2xl font-bold text-green-400">{{ bjCurrentBet*2 }}€</p></div></div></div>
+                    <div class="mb-8"><div class="flex items-center gap-2 mb-3"><span class="text-gray-400 text-sm">CROUPIER</span><span class="bg-gray-700 px-3 py-1 rounded-full text-xs font-bold">{{ dealerScore }}</span></div><div class="flex gap-3 flex-wrap"><div v-for="(card,index) in bjDealerHand" :key="'dealer-'+index" class="w-20 h-28 bg-white rounded-lg flex items-center justify-center text-3xl font-bold shadow-lg card-flip" :class="index===0&&!bjGameEnded&&!bjDealerRevealed?'bg-gradient-to-br from-purple-600 to-purple-800 text-white':'text-gray-900'">{{ index===0&&!bjGameEnded&&!bjDealerRevealed?'🂠':getCardSymbol(card) }}</div></div></div>
+                    <div v-if="bjGameMessage" :class="['text-center text-2xl font-bold mb-8 py-4 rounded-xl',bjGameMessage.includes('Gagné')?'bg-green-500/20 text-green-400':bjGameMessage.includes('Perdu')?'bg-red-500/20 text-red-400':'bg-yellow-500/20 text-yellow-400']">{{ bjGameMessage }}</div>
+                    <div class="mb-8"><div class="flex items-center gap-2 mb-3"><span class="text-gray-400 text-sm">VOUS</span><span class="bg-gray-700 px-3 py-1 rounded-full text-xs font-bold">{{ playerScore }}</span></div><div class="flex gap-3 flex-wrap"><div v-for="(card,index) in bjPlayerHand" :key="'player-'+index" class="w-20 h-28 bg-white rounded-lg flex items-center justify-center text-3xl font-bold shadow-lg card-flip text-gray-900">{{ getCardSymbol(card) }}</div></div></div>
+                    <div v-if="!bjGameStarted" class="text-center"><label class="block text-gray-400 text-sm mb-3">Votre Mise</label><div class="flex gap-4 items-center justify-center mb-6"><input type="number" v-model="bjBetAmount" :min="10" :max="balance" class="bg-gray-700 border border-gray-600 rounded-lg px-4 py-3 text-white font-bold w-32" /><button @click="bjBetAmount=Math.min(balance,bjBetAmount+10)" class="bg-gray-700 hover:bg-gray-600 px-4 py-3 rounded-lg font-bold">+</button><button @click="bjBetAmount=Math.max(10,bjBetAmount-10)" class="bg-gray-700 hover:bg-gray-600 px-4 py-3 rounded-lg font-bold">-</button><button @click="bjBetAmount=balance" class="bg-purple-600 hover:bg-purple-500 px-4 py-3 rounded-lg font-bold">MAX</button></div><button @click="startBlackjack" :disabled="bjBetAmount>balance||bjBetAmount<10" class="bg-gradient-to-r from-green-600 to-emerald-600 text-white font-bold py-4 px-12 rounded-full shadow-lg active:scale-95 transition disabled:opacity-50 text-lg">DISTRIBUER ({{ bjBetAmount }}€)</button></div>
+                    <div v-if="bjGameStarted&&!bjGameEnded&&bjPlayerTurn" class="flex justify-center gap-4 flex-wrap"><button @click="bjHit" class="bg-gradient-to-r from-blue-600 to-cyan-600 text-white font-bold py-3 px-8 rounded-full shadow-lg transition text-lg">PIGER</button><button @click="bjStand" class="bg-gradient-to-r from-red-600 to-orange-600 text-white font-bold py-3 px-8 rounded-full shadow-lg transition text-lg">RESTER</button><button @click="bjDoubleDown" :disabled="balance<bjCurrentBet||bjPlayerHand.length!==2" class="bg-gradient-to-r from-purple-600 to-pink-600 text-white font-bold py-3 px-8 rounded-full shadow-lg transition text-lg disabled:opacity-50">DOUBLER</button></div>
+                    <div v-if="bjGameEnded" class="text-center"><button @click="resetBlackjack" class="bg-gray-700 hover:bg-gray-600 text-white font-bold py-3 px-8 rounded-full transition text-lg">Nouvelle Partie</button></div>
+                    <div class="mt-8 pt-6 border-t border-gray-700 grid grid-cols-2 md:grid-cols-4 gap-4 text-center"><div><p class="text-xs text-gray-400 uppercase">Parties</p><p class="text-xl font-bold text-white">{{ bjGamesPlayed }}</p></div><div><p class="text-xs text-gray-400 uppercase">Victoires</p><p class="text-xl font-bold text-green-400">{{ bjWins }}</p></div><div><p class="text-xs text-gray-400 uppercase">Défaites</p><p class="text-xl font-bold text-red-400">{{ bjLosses }}</p></div><div><p class="text-xs text-gray-400 uppercase">Blackjacks</p><p class="text-xl font-bold text-yellow-400">{{ bjBlackjacks }}</p></div></div>
+                </div>
+            </div>
+        </transition>
+
+    </main>
+    <footer class="relative z-10 bg-gray-900 border-t border-gray-800 mt-12 py-6"><div class="container mx-auto px-6 text-center text-gray-500 text-sm"><p>&copy; 2025 Casino Royal. Jouez responsablement. 18+</p></div></footer>
+</div>
+<script src="aio.js">
+
+</script>
+</body>
+</html>

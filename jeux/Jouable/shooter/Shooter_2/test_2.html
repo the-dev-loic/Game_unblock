@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Neon FPS - Ultimate Edition</title>
+    <link href="shooter_2.css" rel="stylesheet">
+    <style>
+
+
+    </style>
+    <!-- Import Three.js -->
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+                "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+            }
+        }
+    </script>
+</head>
+<body>
+
+<!-- UI Elements -->
+<div id="damage-overlay"></div>
+
+<div id="ui-layer">
+    <div class="hud-panel">
+        <div id="score-display">SCORE: <span id="score">0</span></div>
+        <div id="wave-display" style="display:none;">VAGUE: <span id="wave">1</span></div>
+        <div id="time-display" style="display:none;">TEMPS: <span id="time">60</span></div>
+    </div>
+    <div id="crosshair"></div>
+    <div id="health-bar-container" style="display:none;">
+        <div id="health-fill"></div>
+    </div>
+</div>
+
+<div id="menu-overlay">
+    <h1 id="title-text">NEON SHOOTER</h1>
+    <p id="subtitle-text">ZQSD pour bouger | SOURIS pour viser | CLIC pour tirer</p>
+
+    <div class="menu-buttons" id="main-menu">
+        <button id="btn-survival">MODE SURVIE</button>
+        <button id="btn-aim" class="secondary">AIM TRAINER</button>
+        <button id="btn-settings" class="secondary">PARAMÈTRES</button>
+    </div>
+
+    <div class="menu-buttons" id="gameover-menu" style="display:none;">
+        <h2 style="color:red; text-align:center;">ÉCHEC DE LA MISSION</h2>
+        <p style="text-align:center;">Score Final: <span id="final-score">0</span></p>
+        <button id="btn-back-menu">MENU PRINCIPAL</button>
+    </div>
+</div>
+
+<!-- Settings Modal -->
+<div id="settings-modal">
+    <h2 style="color:#0f0; margin-top:0;">PARAMÈTRES</h2>
+
+    <div class="setting-row">
+        <label>Sensibilité Souris: <span id="sens-value">1.0</span></label>
+        <input type="range" id="sens-slider" min="0.5" max="3.0" step="0.1" value="1.0">
+    </div>
+
+    <button class="close-btn" id="btn-close-settings">FERMER</button>
+</div>
+
+<script type="module" src="shooter_2.js">
+
+
+</script>
+</body>
+</html>
+
