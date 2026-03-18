@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tactical FPS</title>
+    <link href="shooter_5.css" rel="stylesheet">
+    <style>
+
+    </style>
+    <script type="importmap">
+        {"imports":{"three":"https://unpkg.com/three@0.160.0/build/three.module.js","three/addons/":"https://unpkg.com/three@0.160.0/examples/jsm/"}}
+    </script>
+</head>
+<body>
+<div id="damage-overlay"></div>
+<div id="ui-layer">
+    <div class="hud-top">
+        <div>SCORE: <span id="score">0</span></div>
+        <div>ENNEMIS: <span id="enemies-left">0</span></div>
+    </div>
+    <div id="wave-display">VAGUE <span id="wave-num">1</span></div>
+    <canvas id="minimap" width="160" height="160"></canvas>
+    <div id="crosshair"></div>
+    <div id="health-bar-container"><div id="health-fill"></div></div>
+    <div id="ammo-display">10 / 30</div>
+    <div id="reload-bar-wrap"><div id="reload-bar"></div></div>
+    <div id="wallrun-indicator">⚡ WALL RUN</div>
+    <div id="kill-feed"></div>
+    <button id="btn-settings-hud">⚙ Paramètres</button>
+</div>
+
+<!-- MENU PRINCIPAL -->
+<div id="menu-overlay">
+    <h1>TACTICAL FPS</h1>
+    <div class="subtitle">MISSION : ÉLIMINER TOUS LES ENNEMIS</div>
+    <div class="keys-hint">
+        W A S D — Déplacer dans la direction du regard<br>
+        SHIFT — Courir &nbsp;|&nbsp; ESPACE — Sauter / Wall Jump<br>
+        CLIC GAUCHE — Tirer &nbsp;|&nbsp; R — Recharger<br>
+        Courez contre un mur en l'air → Wall Run automatique
+    </div>
+    <div class="menu-buttons">
+        <button id="btn-start">▶ DÉMARRER</button>
+        <button id="btn-open-settings-menu">⚙ PARAMÈTRES</button>
+    </div>
+</div>
+
+<!-- PANNEAU PARAMÈTRES -->
+<div id="settings-overlay">
+    <div class="settings-box">
+        <h2>⚙ PARAMÈTRES</h2>
+
+        <div class="settings-section">
+            <h3>🎯 Viseur (Crosshair)</h3>
+            <div class="setting-row">
+                <label>Style</label>
+                <select id="ch-style">
+                    <option value="dot">Point</option>
+                    <option value="cross">Croix</option>
+                    <option value="circle">Cercle</option>
+                    <option value="crossdot">Croix + Point</option>
+                </select>
+            </div>
+            <div class="setting-row">
+                <label>Taille</label>
+                <input type="range" id="ch-size" min="2" max="24" value="6" step="1">
+                <span class="setting-val" id="ch-size-val">6</span>
+            </div>
+            <div class="setting-row">
+                <label>Épaisseur</label>
+                <input type="range" id="ch-thick" min="1" max="5" value="2" step="1">
+                <span class="setting-val" id="ch-thick-val">2</span>
+            </div>
+            <div class="setting-row">
+                <label>Couleur</label>
+                <select id="ch-color">
+                    <option value="#00ff00">Vert</option>
+                    <option value="#ffffff">Blanc</option>
+                    <option value="#ff0000">Rouge</option>
+                    <option value="#00ffff">Cyan</option>
+                    <option value="#ffff00">Jaune</option>
+                    <option value="#ff6600">Orange</option>
+                </select>
+            </div>
+            <div class="setting-row">
+                <label>Opacité</label>
+                <input type="range" id="ch-opacity" min="0.2" max="1" value="1" step="0.05">
+                <span class="setting-val" id="ch-opacity-val">100%</span>
+            </div>
+            <div id="crosshair-preview" style="height:60px;display:flex;align-items:center;justify-content:center;background:rgba(0,5,0,0.6);border:1px solid #003300;margin-top:6px;position:relative"></div>
+        </div>
+
+        <div class="settings-section">
+            <h3>🖱 Souris</h3>
+            <div class="setting-row">
+                <label>Sensibilité</label>
+                <input type="range" id="sensitivity" min="0.1" max="3" value="1" step="0.05">
+                <span class="setting-val" id="sensitivity-val">1.00</span>
+            </div>
+            <div class="setting-row">
+                <label>Inverser Y</label>
+                <select id="invert-y">
+                    <option value="0">Non</option>
+                    <option value="1">Oui</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="settings-section">
+            <h3>🎮 Aim Trainer</h3>
+            <div style="font-size:12px;color:#555;margin-bottom:8px">Entraînez votre précision. Les cibles disparaissent si vous ratez.</div>
+            <div id="trainer-stats">
+                Hits: <span id="tr-hits">0</span> &nbsp;
+                Ratés: <span id="tr-miss">0</span> &nbsp;
+                Précision: <span id="tr-acc">—</span> &nbsp;
+                Temps: <span id="tr-time">—</span>
+            </div>
+            <div id="trainer-countdown"></div>
+            <div style="display:flex;gap:10px;margin-top:8px">
+                <button id="btn-start-trainer">▶ Démarrer (20s)</button>
+                <button id="btn-stop-trainer">■ Arrêter</button>
+            </div>
+            <div id="aim-trainer-area"></div>
+        </div>
+
+        <div style="display:flex;gap:12px;margin-top:10px">
+            <button id="btn-close-settings" style="flex:1">✔ APPLIQUER & FERMER</button>
+        </div>
+    </div>
+</div>
+
+<script type="module" src="shooter_5.js">
+
+</script>
+</body>
+</html>

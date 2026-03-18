@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Neon FPS Shooter</title>
+    <link href="shooter.css" rel="stylesheet">
+    <style>
+
+    </style>
+    <!-- Import Three.js -->
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+                "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+            }
+        }
+    </script>
+</head>
+<body>
+
+<!-- UI Elements -->
+<div id="damage-overlay"></div>
+
+<div id="ui-layer">
+    <div class="hud-panel">
+        <div>SCORE: <span id="score">0</span></div>
+        <div>VAGUE: <span id="wave">1</span></div>
+    </div>
+    <div id="crosshair"></div>
+    <div id="health-bar-container">
+        <div id="health-fill"></div>
+    </div>
+</div>
+
+<div id="menu-overlay">
+    <h1 id="title-text">NEON SHOOTER</h1>
+    <p>ZQSD pour bouger | SOURIS pour viser | CLIC pour tirer</p>
+    <button id="start-btn">COMMENCER LA MISSION</button>
+</div>
+
+<script type="module" src="shooter_1.js">
+
+
+</script>
+</body>
+</html>
+
