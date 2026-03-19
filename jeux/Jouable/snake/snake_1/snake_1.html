@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Retro Snake</title>
+    <link href="snake_1.css" rel="stylesheet">
+    <style>
+
+    </style>
+</head>
+<body>
+
+<div class="game-container">
+    <div class="header">
+        <div class="score-board">SCORE: <span id="scoreEl">0</span></div>
+        <div class="score-board">HIGH: <span id="highScoreEl">0</span></div>
+    </div>
+
+    <canvas id="gameCanvas" width="400" height="400"></canvas>
+
+    <div class="controls-hint">
+        Use Arrow Keys or WASD to Move<br>
+        Space to Pause
+    </div>
+
+    <div class="mobile-controls">
+        <div class="d-pad-btn d-pad-up" onclick="game.handleInput('ArrowUp')">▲</div>
+        <div class="d-pad-btn d-pad-left" onclick="game.handleInput('ArrowLeft')">◀</div>
+        <div class="d-pad-btn d-pad-down" onclick="game.handleInput('ArrowDown')">▼</div>
+        <div class="d-pad-btn d-pad-right" onclick="game.handleInput('ArrowRight')">▶</div>
+    </div>
+
+    <!-- Start Screen Overlay -->
+    <div id="startScreen" class="overlay">
+        <h1>SNAKE</h1>
+        <p>Eat apples to grow.<br>Don't hit the walls!</p>
+        <button id="startBtn">START GAME</button>
+    </div>
+
+    <!-- Game Over Overlay -->
+    <div id="gameOverScreen" class="overlay hidden">
+        <h1 style="color: #ef4444;">GAME OVER</h1>
+        <p>Final Score: <span id="finalScore">0</span></p>
+        <button id="restartBtn">TRY AGAIN</button>
+    </div>
+
+    <!-- Pause Overlay -->
+    <div id="pauseScreen" class="overlay hidden">
+        <h1>PAUSED</h1>
+        <button id="resumeBtn">RESUME</button>
+    </div>
+</div>
+
+<script src="snake_1.js">
+
+</script>
+</body>
+</html>
+

@@ -1,0 +1,1147 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NeuroAim - Trainer Pro</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Rajdhani:wght@400;600&display=swap');
+
+        :root {
+            --primary: #00f3ff;
+            --secondary: #bc13fe;
+            --accent: #0aff0a;
+            --r301: #ff9500;
+            --bg-dark: #050510;
+            --glass: rgba(255, 255, 255, 0.05);
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; user-select: none; cursor: none; }
+
+        body {
+            background-color: var(--bg-dark);
+            font-family: 'Rajdhani', sans-serif;
+            overflow: hidden;
+            height: 100vh; width: 100vw;
+            color: white;
+        }
+
+        /* Custom Cursor — crosshair style pour R-301 */
+        #cursor {
+            position: fixed;
+            top: 0; left: 0;
+            width: 20px; height: 20px;
+            border: 2px solid var(--primary);
+            border-radius: 50%;
+            pointer-events: none;
+            transform: translate(-50%, -50%);
+            z-index: 9999;
+            transition: border-color 0.1s;
+            mix-blend-mode: difference;
+        }
+        #cursor.r301-cursor {
+            border-color: var(--r301);
+            border-radius: 0;
+            width: 24px; height: 24px;
+            border-width: 2px;
+            box-shadow: 0 0 8px var(--r301);
+        }
+        #cursor::after {
+            content: '';
+            position: absolute;
+            top: 50%; left: 50%;
+            width: 4px; height: 4px;
+            background: var(--primary);
+            transform: translate(-50%, -50%);
+            border-radius: 50%;
+        }
+        #cursor.r301-cursor::after { background: var(--r301); border-radius: 0; }
+
+        /* Recoil crosshair lines */
+        #cursor-h, #cursor-v {
+            position: fixed;
+            pointer-events: none;
+            z-index: 9998;
+            display: none;
+        }
+        #cursor-h {
+            width: 16px; height: 2px;
+            background: var(--r301);
+            transform: translate(-50%, -50%);
+        }
+        #cursor-v {
+            width: 2px; height: 16px;
+            background: var(--r301);
+            transform: translate(-50%, -50%);
+        }
+
+        /* Menu */
+        #menu-screen {
+            position: absolute; top: 0; left: 0;
+            width: 100%; height: 100%;
+            background: linear-gradient(rgba(5, 5, 16, 0.7), rgba(5, 5, 16, 0.9));
+            display: flex; flex-direction: column;
+            align-items: center; justify-content: center;
+            z-index: 10; transition: opacity 0.5s ease;
+        }
+
+        h1 {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 4rem; text-transform: uppercase;
+            background: linear-gradient(to right, var(--primary), var(--secondary));
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+            margin-bottom: 2rem;
+            letter-spacing: 4px;
+        }
+
+        .mode-select {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 20px; width: 90%; max-width: 1200px;
+        }
+
+        .card {
+            background: var(--glass);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            padding: 2rem; border-radius: 15px;
+            text-align: center; transition: all 0.3s ease; cursor: none;
+        }
+        .card:hover {
+            transform: translateY(-10px);
+            background: rgba(255, 255, 255, 0.1);
+            border-color: var(--primary);
+            box-shadow: 0 0 30px rgba(0, 243, 255, 0.2);
+        }
+        .card.r301-card:hover {
+            border-color: var(--r301);
+            box-shadow: 0 0 30px rgba(255, 149, 0, 0.3);
+        }
+        .card h2 { font-family: 'Orbitron', sans-serif; font-size: 1.3rem; margin-bottom: 0.8rem; color: var(--primary); }
+        .card.r301-card h2 { color: var(--r301); }
+        .card p { font-size: 1rem; color: #ccc; margin-bottom: 1.5rem; line-height: 1.4; }
+
+        .card .badge {
+            display: inline-block;
+            background: rgba(255, 149, 0, 0.15);
+            border: 1px solid var(--r301);
+            color: var(--r301);
+            font-size: 0.75rem;
+            padding: 2px 8px;
+            border-radius: 4px;
+            margin-bottom: 0.8rem;
+            font-family: 'Orbitron', sans-serif;
+            letter-spacing: 1px;
+        }
+
+        .btn {
+            background: transparent;
+            border: 2px solid var(--primary);
+            color: var(--primary);
+            padding: 10px 30px;
+            font-family: 'Orbitron', sans-serif;
+            font-weight: bold; text-transform: uppercase;
+            cursor: none; transition: all 0.3s;
+            clip-path: polygon(10% 0, 100% 0, 100% 70%, 90% 100%, 0 100%, 0 30%);
+        }
+        .btn:hover { background: var(--primary); color: black; box-shadow: 0 0 20px var(--primary); }
+        .btn.r301-btn { border-color: var(--r301); color: var(--r301); }
+        .btn.r301-btn:hover { background: var(--r301); color: black; box-shadow: 0 0 20px var(--r301); }
+
+        /* Game HUD */
+        #game-ui {
+            position: absolute; top: 0; left: 0;
+            width: 100%; height: 100%;
+            pointer-events: none; display: none; z-index: 5;
+        }
+        .hud-top {
+            display: flex; justify-content: space-between;
+            padding: 20px 40px;
+            font-family: 'Orbitron', sans-serif; font-size: 1.5rem;
+        }
+        .stat-box {
+            background: rgba(0, 0, 0, 0.5);
+            padding: 10px 20px; border-radius: 5px;
+            border-left: 4px solid var(--primary);
+        }
+        .stat-box.r301-hud { border-left-color: var(--r301); }
+        .stat-label { font-size: 0.8rem; color: #aaa; display: block; }
+        .pause-btn-hud {
+            pointer-events: auto; cursor: none;
+            background: rgba(0,0,0,0.5);
+            border: 1px solid var(--primary);
+            color: var(--primary); padding: 5px 15px;
+            font-family: 'Orbitron'; font-size: 1rem;
+        }
+
+        /* R-301 specific HUD elements */
+        #r301-hud {
+            position: absolute; bottom: 40px; right: 40px;
+            display: none; flex-direction: column; align-items: flex-end; gap: 12px;
+        }
+        .ammo-display {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 2.5rem; color: var(--r301);
+            text-shadow: 0 0 15px rgba(255, 149, 0, 0.5);
+            letter-spacing: 2px;
+        }
+        .ammo-display span { font-size: 1.2rem; color: #888; }
+        .mag-dots {
+            display: flex; gap: 4px; flex-wrap: wrap;
+            justify-content: flex-end; max-width: 300px;
+        }
+        .mag-dot {
+            width: 8px; height: 18px; border-radius: 2px;
+            background: var(--r301);
+            box-shadow: 0 0 4px rgba(255,149,0,0.4);
+            transition: background 0.05s, box-shadow 0.05s;
+        }
+        .mag-dot.empty { background: #333; box-shadow: none; }
+
+        .hp-bar-container {
+            width: 300px;
+        }
+        .hp-bar-label {
+            display: flex; justify-content: space-between;
+            font-family: 'Orbitron', sans-serif; font-size: 0.8rem;
+            margin-bottom: 4px;
+        }
+        .hp-bar-label .hp-val { color: var(--accent); font-size: 1rem; }
+        .hp-bar-bg {
+            width: 100%; height: 12px;
+            background: #222; border-radius: 6px; overflow: hidden;
+            border: 1px solid #444;
+        }
+        .hp-bar-fill {
+            height: 100%; border-radius: 6px;
+            background: linear-gradient(to right, #ff3333, var(--accent));
+            transition: width 0.1s ease;
+            box-shadow: 0 0 8px rgba(10, 255, 10, 0.4);
+        }
+
+        .reload-bar-container { width: 300px; display: none; }
+        .reload-bar-bg { width: 100%; height: 8px; background: #333; border-radius: 4px; overflow: hidden; }
+        .reload-bar-fill {
+            height: 100%; border-radius: 4px;
+            background: var(--r301);
+            transition: width 0.05s linear;
+        }
+        .reload-label {
+            font-family: 'Orbitron'; font-size: 0.75rem;
+            color: var(--r301); margin-bottom: 4px;
+            animation: blink 0.5s ease-in-out infinite;
+        }
+        @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.4} }
+
+        /* Recoil indicator */
+        #recoil-indicator {
+            position: absolute; bottom: 160px; left: 50%;
+            transform: translateX(-50%);
+            display: none;
+            flex-direction: column; align-items: center; gap: 4px;
+        }
+        .recoil-label { font-family: 'Orbitron'; font-size: 0.7rem; color: #666; letter-spacing: 2px; }
+        .recoil-graph {
+            width: 80px; height: 120px;
+            border: 1px solid #333; border-radius: 4px;
+            position: relative; background: rgba(0,0,0,0.3);
+        }
+        #recoil-dot {
+            position: absolute; width: 6px; height: 6px;
+            background: var(--r301); border-radius: 50%;
+            transform: translate(-50%, -50%);
+            transition: top 0.05s, left 0.05s;
+            box-shadow: 0 0 6px var(--r301);
+        }
+
+        /* Pause Menu */
+        #pause-menu {
+            position: absolute; top: 0; left: 0;
+            width: 100%; height: 100%;
+            background: rgba(5, 5, 16, 0.85);
+            backdrop-filter: blur(8px);
+            display: none; flex-direction: column;
+            align-items: center; justify-content: center; z-index: 50;
+        }
+        .pause-card {
+            background: rgba(255,255,255,0.05);
+            border: 1px solid var(--secondary);
+            padding: 3rem; border-radius: 20px;
+            text-align: center; width: 400px;
+            box-shadow: 0 0 50px rgba(188,19,254,0.2);
+        }
+        .pause-card h2 { font-family: 'Orbitron'; color: var(--secondary); margin-bottom: 2rem; font-size: 2rem; }
+        .control-group { margin-bottom: 2rem; text-align: left; }
+        .control-group label { display: block; margin-bottom: 10px; font-size: 1.2rem; color: #ddd; }
+        input[type="range"] { width: 100%; height: 6px; background: #333; border-radius: 3px; outline: none; -webkit-appearance: none; }
+        input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; width: 20px; height: 20px; background: var(--primary); border-radius: 50%; cursor: none; box-shadow: 0 0 10px var(--primary); }
+        .pause-actions { display: flex; flex-direction: column; gap: 15px; }
+
+        /* Game Over */
+        #game-over {
+            position: absolute; top: 0; left: 0;
+            width: 100%; height: 100%;
+            background: rgba(0,0,0,0.85);
+            display: none; flex-direction: column;
+            align-items: center; justify-content: center;
+            z-index: 20; backdrop-filter: blur(5px);
+        }
+        .score-display { font-size: 5rem; font-family: 'Orbitron', sans-serif; color: var(--accent); margin-bottom: 1rem; }
+        .stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 3rem; text-align: center; }
+        .stat-item h3 { color: #888; font-size: 1rem; }
+        .stat-item span { font-size: 2rem; font-weight: bold; }
+
+        /* Flash hit screen */
+        #hit-flash {
+            position: absolute; top: 0; left: 0;
+            width: 100%; height: 100%;
+            pointer-events: none; z-index: 4;
+            background: rgba(255, 149, 0, 0);
+            transition: background 0.05s;
+        }
+
+        canvas { display: block; }
+
+        /* Shake animation for recoil */
+        @keyframes screenShake {
+            0%   { transform: translate(0,0); }
+            20%  { transform: translate(-1px, -2px); }
+            40%  { transform: translate(1px, -1px); }
+            60%  { transform: translate(-1px, 1px); }
+            80%  { transform: translate(1px, 2px); }
+            100% { transform: translate(0,0); }
+        }
+        .shaking { animation: screenShake 0.08s linear; }
+    </style>
+</head>
+<body>
+
+<div id="cursor"></div>
+<div id="cursor-h"></div>
+<div id="cursor-v"></div>
+<div id="hit-flash"></div>
+
+<!-- Main Menu -->
+<div id="menu-screen">
+    <h1>NeuroAim</h1>
+    <div class="mode-select">
+        <div class="card">
+            <h2>Flickshot</h2>
+            <p>Cibles statiques aléatoires. Vitesse et précision.</p>
+            <button class="btn" onclick="startGame('flick')">Commencer</button>
+        </div>
+        <div class="card">
+            <h2>Quickscope</h2>
+            <p>Cibles qui rétrécissent. Réflexes extrêmes.</p>
+            <button class="btn" onclick="startGame('quick')">Commencer</button>
+        </div>
+        <div class="card">
+            <h2>Aim Courbe</h2>
+            <p>Cibles en mouvement. Maîtrisez le tracking.</p>
+            <button class="btn" onclick="startGame('curve')">Commencer</button>
+        </div>
+        <div class="card r301-card">
+            <div class="badge">APEX LEGENDS</div>
+            <h2>R-301</h2>
+            <p>Full-auto, 14 dmg/balle, recul réaliste. Videz votre chargeur sur une cible à 200 PV.</p>
+            <button class="btn r301-btn" onclick="startGame('r301')">Commencer</button>
+        </div>
+    </div>
+</div>
+
+<!-- Game UI -->
+<div id="game-ui">
+    <div class="hud-top">
+        <div class="stat-box" id="hud-score-box">
+            <span class="stat-label">SCORE</span>
+            <span id="score">0</span>
+        </div>
+        <div class="stat-box" id="hud-time-box">
+            <span class="stat-label">TEMPS</span>
+            <span id="time">60</span>
+        </div>
+        <div class="stat-box" id="hud-acc-box">
+            <span class="stat-label">PRÉCISION</span>
+            <span id="accuracy">100%</span>
+        </div>
+        <button class="pause-btn-hud" onclick="togglePause()">PAUSE (ESC)</button>
+    </div>
+
+    <!-- R-301 specific HUD -->
+    <div id="r301-hud">
+        <div class="hp-bar-container">
+            <div class="hp-bar-label">
+                <span>HP CIBLE</span>
+                <span class="hp-val" id="hp-val">200</span>
+            </div>
+            <div class="hp-bar-bg">
+                <div class="hp-bar-fill" id="hp-bar" style="width:100%"></div>
+            </div>
+        </div>
+        <div class="reload-bar-container" id="reload-container">
+            <div class="reload-label">RECHARGEMENT...</div>
+            <div class="reload-bar-bg"><div class="reload-bar-fill" id="reload-bar" style="width:0%"></div></div>
+        </div>
+        <div class="ammo-display">
+            <span id="ammo-count">18</span><span> / 18</span>
+        </div>
+        <div class="mag-dots" id="mag-dots"></div>
+    </div>
+
+    <!-- Recoil visualizer -->
+    <div id="recoil-indicator">
+        <div class="recoil-label">RECUL</div>
+        <div class="recoil-graph"><div id="recoil-dot" style="top:90%;left:50%"></div></div>
+    </div>
+</div>
+
+<!-- Pause Menu -->
+<div id="pause-menu">
+    <div class="pause-card">
+        <h2>PAUSE</h2>
+        <div class="control-group">
+            <label for="sensitivity">Sensibilité Souris</label>
+            <input type="range" id="sensitivity" min="0.1" max="2.0" step="0.1" value="1.0">
+        </div>
+        <div class="pause-actions">
+            <button class="btn" onclick="togglePause()">Reprendre</button>
+            <button class="btn" style="border-color:#ff3333;color:#ff3333" onclick="returnToMenu()">Quitter</button>
+        </div>
+    </div>
+</div>
+
+<!-- Game Over -->
+<div id="game-over">
+    <h1 id="go-title">Session Terminée</h1>
+    <div class="score-display" id="final-score">0</div>
+    <div class="stats-grid">
+        <div class="stat-item"><h3>Clics Totaux</h3><span id="total-clicks">0</span></div>
+        <div class="stat-item"><h3>Clics Manqués</h3><span id="missed-clicks" style="color:#ff3333">0</span></div>
+        <div class="stat-item"><h3>Précision</h3><span id="final-accuracy">0%</span></div>
+        <div class="stat-item"><h3 id="stat4-label">Cibles / Sec</h3><span id="aps">0</span></div>
+    </div>
+    <button class="btn" onclick="returnToMenu()">Menu Principal</button>
+</div>
+
+<canvas id="gameCanvas"></canvas>
+
+<script>
+    // ─── Core Setup ───────────────────────────────────────────────────────────────
+    const canvas = document.getElementById('gameCanvas');
+    const ctx    = canvas.getContext('2d');
+    const cursor = document.getElementById('cursor');
+    const cursorH = document.getElementById('cursor-h');
+    const cursorV = document.getElementById('cursor-v');
+    const hitFlash = document.getElementById('hit-flash');
+    const sensInput = document.getElementById('sensitivity');
+
+    let width, height, animationId, lastTime = 0, isPaused = false;
+    let mouseSensitivity = 1.0;
+
+    sensInput.addEventListener('input', e => mouseSensitivity = parseFloat(e.target.value));
+
+    // Always update cursor position
+    document.addEventListener('mousemove', e => {
+        cursor.style.left = e.clientX + 'px';
+        cursor.style.top  = e.clientY + 'px';
+        if (r301.active) {
+            cursorH.style.left = e.clientX + 'px';
+            cursorH.style.top  = e.clientY + 'px';
+            cursorV.style.left = e.clientX + 'px';
+            cursorV.style.top  = e.clientY + 'px';
+        }
+    });
+
+    // ─── R-301 Data ───────────────────────────────────────────────────────────────
+    // Real Apex stats:
+    //   Damage per bullet: 14 (body), 21 (head)
+    //   Magazine: 18 (base), RPM ~600 → 1 bullet every 100ms
+    //   Reload time: 2.4s
+    //   Recoil pattern: climbs up, slight left deviation mid-mag, back toward center late
+
+    const R301_STATS = {
+        damage:       14,
+        headMult:     1.5,    // headshot = 21 dmg
+        magSize:      18,
+        rpm:          600,
+        fireInterval: 100,    // ms between bullets (600rpm = 10/s)
+        reloadTime:   2400,   // ms
+        maxHP:        200,
+        // Recoil pattern: array of {dx, dy} per shot (in "virtual" units, scaled to screen)
+        // Climbs up fast, slight left wiggle, stabilizes
+        recoilPattern: [
+            {dx:  0,    dy: -0.5},  // 1
+            {dx:  0.1,  dy: -1.2},  // 2
+            {dx: -0.2,  dy: -1.8},  // 3
+            {dx:  0.1,  dy: -2.2},  // 4
+            {dx: -0.3,  dy: -2.5},  // 5
+            {dx:  0.2,  dy: -2.7},  // 6
+            {dx: -0.4,  dy: -2.8},  // 7
+            {dx:  0.3,  dy: -2.9},  // 8
+            {dx: -0.5,  dy: -2.9},  // 9
+            {dx:  0.4,  dy: -3.0},  // 10
+            {dx: -0.5,  dy: -3.0},  // 11
+            {dx:  0.2,  dy: -3.1},  // 12
+            {dx: -0.3,  dy: -3.1},  // 13
+            {dx:  0.1,  dy: -3.0},  // 14
+            {dx: -0.2,  dy: -2.9},  // 15
+            {dx:  0.1,  dy: -2.8},  // 16
+            {dx:  0,    dy: -2.7},  // 17
+            {dx:  0,    dy: -2.6},  // 18
+        ]
+    };
+
+    // ─── R-301 State ──────────────────────────────────────────────────────────────
+    const r301 = {
+        active:       false,
+        ammo:         18,
+        isReloading:  false,
+        reloadStart:  0,
+        isFiring:     false,
+        lastShot:     0,
+        shotCount:    0,       // shots fired this mag
+        recoilX:      0,       // accumulated recoil offset
+        recoilY:      0,
+        targetHP:     200,
+        targetKills:  0,
+        totalShots:   0,
+        totalHits:    0,
+        mouseHeld:    false,
+    };
+
+    // ─── Game State ───────────────────────────────────────────────────────────────
+    const state = {
+        isPlaying: false,
+        mode: null,
+        score: 0,
+        timeLeft: 60,
+        clicks: 0,
+        hits: 0,
+        targets: [],
+        particles: [],
+        spawnTimer: 0,
+        spawnInterval: 800,
+    };
+
+    function resize() {
+        width = canvas.width  = window.innerWidth;
+        height = canvas.height = window.innerHeight;
+    }
+    window.addEventListener('resize', resize);
+    resize();
+
+    // ─── Input ────────────────────────────────────────────────────────────────────
+    document.addEventListener('mousedown', e => {
+        cursor.style.transform = 'translate(-50%, -50%) scale(0.8)';
+        if (!state.isPlaying || isPaused) return;
+        if (state.mode === 'r301') {
+            r301.mouseHeld = true;
+        } else {
+            handleInput(e);
+        }
+    });
+
+    document.addEventListener('mouseup', () => {
+        cursor.style.transform = 'translate(-50%, -50%) scale(1)';
+        if (state.mode === 'r301') {
+            r301.mouseHeld = false;
+            // Recoil snaps back smoothly handled in loop
+        }
+    });
+
+    document.addEventListener('keydown', e => {
+        if (e.key === 'Escape' && state.isPlaying) togglePause();
+        if (e.key.toLowerCase() === 'r' && state.mode === 'r301' && !r301.isReloading && r301.ammo < R301_STATS.magSize) {
+            startReload();
+        }
+    });
+
+    // ─── Classes ──────────────────────────────────────────────────────────────────
+    class Target {
+        constructor(x, y, type) {
+            this.x = x; this.y = y; this.type = type;
+            this.markedForDeletion = false;
+            this.baseRadius = type === 'r301' ? 45 : 35;
+            this.radius = this.baseRadius;
+
+            if (type === 'quick') {
+                this.color = '#ff3333';
+                this.creationTime = Date.now();
+                this.lifespan = 2500;
+            } else if (type === 'curve') {
+                this.color = '#bc13fe';
+                this.angle = 0; this.speed = 0.03;
+                this.originX = x; this.originY = y;
+                this.dirX = Math.random() > 0.5 ? 1 : -1;
+                this.dirY = Math.random() > 0.5 ? 1 : -1;
+            } else if (type === 'r301') {
+                this.color = '#ff9500';
+                // Silhouette style — humanoid hitbox feel
+            } else {
+                this.color = '#00f3ff';
+            }
+        }
+
+        update(deltaTime) {
+            if (this.type === 'curve') {
+                this.angle += this.speed;
+                this.x = this.originX + Math.sin(this.angle) * 150 * this.dirX;
+                this.y = this.originY + Math.cos(this.angle * 0.7) * 80 * this.dirY;
+            } else if (this.type === 'quick') {
+                const p = (Date.now() - this.creationTime) / this.lifespan;
+                if (p >= 1) this.markedForDeletion = true;
+                else this.radius = this.baseRadius * (1 - p * 0.8);
+            }
+        }
+
+        draw(ctx) {
+            if (this.type === 'r301') {
+                this.drawR301(ctx);
+                return;
+            }
+            ctx.beginPath();
+            ctx.arc(this.x, this.y, this.radius, 0, Math.PI*2);
+            ctx.fillStyle = this.color;
+            ctx.shadowBlur = 20; ctx.shadowColor = this.color;
+            ctx.fill(); ctx.shadowBlur = 0;
+
+            ctx.beginPath();
+            ctx.arc(this.x, this.y, this.radius*0.5, 0, Math.PI*2);
+            ctx.strokeStyle = 'white'; ctx.lineWidth = 3; ctx.stroke();
+
+            if (this.type === 'quick') {
+                const p = (Date.now() - this.creationTime) / this.lifespan;
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.radius+5, -Math.PI/2, -Math.PI/2 + Math.PI*2*(1-p));
+                ctx.strokeStyle = 'rgba(255,50,50,0.5)'; ctx.lineWidth = 4; ctx.stroke();
+            }
+        }
+
+        drawR301(ctx) {
+            // Draw a silhouette-style enemy target (humanoid shape)
+            const hp = r301.targetHP;
+            const maxHP = R301_STATS.maxHP;
+            const hpRatio = Math.max(0, hp / maxHP);
+
+            // Glow based on HP
+            ctx.shadowBlur = 15;
+            ctx.shadowColor = hpRatio > 0.5 ? '#ff9500' : '#ff3333';
+
+            // Head
+            ctx.beginPath();
+            ctx.arc(this.x, this.y - 55, 18, 0, Math.PI*2);
+            ctx.fillStyle = hpRatio > 0 ? `rgba(255, ${Math.floor(149*hpRatio)}, 0, 0.9)` : '#444';
+            ctx.fill();
+            ctx.strokeStyle = 'rgba(255,255,255,0.3)'; ctx.lineWidth = 1;
+            ctx.stroke();
+
+            // Body (rounded rect)
+            ctx.beginPath();
+            ctx.roundRect(this.x - 22, this.y - 35, 44, 55, 6);
+            ctx.fillStyle = hpRatio > 0 ? `rgba(255, ${Math.floor(100*hpRatio)}, 0, 0.85)` : '#333';
+            ctx.fill();
+            ctx.stroke();
+
+            // Legs
+            ctx.fillStyle = hpRatio > 0 ? `rgba(200, ${Math.floor(80*hpRatio)}, 0, 0.8)` : '#2a2a2a';
+            ctx.beginPath(); ctx.roundRect(this.x - 18, this.y + 20, 14, 30, 3); ctx.fill();
+            ctx.beginPath(); ctx.roundRect(this.x + 4, this.y + 20, 14, 30, 3); ctx.fill();
+
+            ctx.shadowBlur = 0;
+
+            // HP bar above target
+            const barW = 80, barH = 8;
+            const barX = this.x - barW/2, barY = this.y - 85;
+            ctx.fillStyle = '#222';
+            ctx.fillRect(barX, barY, barW, barH);
+            ctx.fillStyle = hpRatio > 0.5 ? '#0aff0a' : hpRatio > 0.25 ? '#ffaa00' : '#ff3333';
+            ctx.fillRect(barX, barY, barW * hpRatio, barH);
+            ctx.strokeStyle = '#555'; ctx.lineWidth = 1;
+            ctx.strokeRect(barX, barY, barW, barH);
+
+            // HP text
+            ctx.fillStyle = 'white';
+            ctx.font = 'bold 12px Orbitron, monospace';
+            ctx.textAlign = 'center';
+            ctx.fillText(Math.max(0, Math.round(hp)) + ' HP', this.x, barY - 4);
+        }
+    }
+
+    class Particle {
+        constructor(x, y, color, big = false) {
+            this.x = x; this.y = y; this.color = color;
+            this.size = big ? Math.random()*6+3 : Math.random()*4+2;
+            this.speedX = Math.random()*8 - 4;
+            this.speedY = Math.random()*8 - 4;
+            this.life = 1;
+        }
+        update() { this.x += this.speedX; this.y += this.speedY; this.speedX *= 0.9; this.speedY *= 0.9; this.life -= 0.04; }
+        draw(ctx) {
+            ctx.globalAlpha = this.life;
+            ctx.fillStyle = this.color;
+            ctx.beginPath(); ctx.arc(this.x, this.y, this.size, 0, Math.PI*2); ctx.fill();
+            ctx.globalAlpha = 1;
+        }
+    }
+
+    // Hit number popup
+    class HitNumber {
+        constructor(x, y, dmg, isHead) {
+            this.x = x + (Math.random()*20-10);
+            this.y = y;
+            this.dmg = dmg;
+            this.isHead = isHead;
+            this.life = 1;
+            this.vy = -2;
+        }
+        update() { this.y += this.vy; this.vy *= 0.92; this.life -= 0.025; }
+        draw(ctx) {
+            ctx.globalAlpha = this.life;
+            ctx.font = `bold ${this.isHead ? '22px' : '16px'} Orbitron, monospace`;
+            ctx.fillStyle = this.isHead ? '#ffff00' : '#ff9500';
+            ctx.textAlign = 'center';
+            if (this.isHead) {
+                ctx.fillStyle = '#ffff00';
+                ctx.fillText('⭑ ' + this.dmg, this.x, this.y);
+            } else {
+                ctx.fillText(this.dmg, this.x, this.y);
+            }
+            ctx.globalAlpha = 1;
+        }
+    }
+
+    const hitNumbers = [];
+
+    // ─── R-301 Logic ──────────────────────────────────────────────────────────────
+    function r301Shoot(mouseX, mouseY) {
+        if (r301.isReloading || r301.ammo <= 0) return;
+        const now = Date.now();
+        if (now - r301.lastShot < R301_STATS.fireInterval) return;
+
+        r301.lastShot = now;
+        r301.ammo--;
+        r301.totalShots++;
+        r301.shotCount = R301_STATS.magSize - r301.ammo;
+
+        // Apply recoil to accumulated offset
+        const recoilStep = Math.min(r301.shotCount - 1, R301_STATS.recoilPattern.length - 1);
+        const rv = R301_STATS.recoilPattern[recoilStep];
+        const scale = 4; // px per unit
+        r301.recoilX += rv.dx * scale;
+        r301.recoilY += rv.dy * scale;
+
+        // Actual hit position = cursor + accumulated recoil
+        // Player is expected to compensate by dragging down
+        const hitX = mouseX + r301.recoilX;
+        const hitY = mouseY + r301.recoilY;
+
+        // Update recoil indicator
+        updateRecoilIndicator();
+
+        // Check hit on target
+        const target = state.targets[0];
+        if (target) {
+            const dx = hitX - target.x;
+            const dy = hitY - target.y;
+            const dist = Math.sqrt(dx*dx + dy*dy);
+
+            // Head hitbox (top circle of silhouette)
+            const headDist = Math.sqrt(Math.pow(hitX - target.x, 2) + Math.pow(hitY - (target.y - 55), 2));
+            const isHead = headDist < 18;
+            const isBody = !isHead && dist < 48;
+
+            if (isHead || isBody) {
+                r301.totalHits++;
+                state.hits++;
+                const dmg = isHead ? Math.round(R301_STATS.damage * R301_STATS.headMult) : R301_STATS.damage;
+                r301.targetHP = Math.max(0, r301.targetHP - dmg);
+
+                // Hit particles (small orange sparks)
+                for (let i = 0; i < 8; i++)
+                    state.particles.push(new Particle(hitX, hitY, isHead ? '#ffff00' : '#ff9500'));
+
+                // Floating damage number
+                hitNumbers.push(new HitNumber(hitX, hitY, dmg, isHead));
+
+                // Screen flash
+                hitFlash.style.background = isHead ? 'rgba(255,255,0,0.08)' : 'rgba(255,149,0,0.06)';
+                setTimeout(() => hitFlash.style.background = 'rgba(0,0,0,0)', 60);
+
+                // Score
+                state.score += isHead ? 21 : 14;
+                state.hits = r301.totalHits;
+
+                if (r301.targetHP <= 0) {
+                    killTarget();
+                }
+            }
+            state.clicks = r301.totalShots;
+        }
+
+        // Update ammo HUD
+        updateR301HUD();
+        updateHUD();
+
+        // Muzzle flash on cursor
+        cursor.style.boxShadow = '0 0 12px 4px rgba(255,149,0,0.8)';
+        setTimeout(() => cursor.style.boxShadow = '', 60);
+
+        // Screen shake (subtle)
+        canvas.classList.remove('shaking');
+        void canvas.offsetWidth;
+        canvas.classList.add('shaking');
+
+        // Auto reload
+        if (r301.ammo <= 0) startReload();
+    }
+
+    function killTarget() {
+        r301.targetKills++;
+        r301.targetHP = R301_STATS.maxHP;
+
+        // Big explosion on target death
+        const t = state.targets[0];
+        if (t) {
+            for (let i = 0; i < 30; i++) state.particles.push(new Particle(t.x, t.y, '#ff9500', true));
+            for (let i = 0; i < 15; i++) state.particles.push(new Particle(t.x, t.y, '#ffff00', true));
+        }
+
+        // Score bonus
+        state.score += 500;
+        hitNumbers.push(new HitNumber(width/2, height/2 - 80, 'KILL +500', false));
+
+        // Spawn a new target
+        spawnR301Target();
+        updateR301HUD();
+        updateHUD();
+    }
+
+    function startReload() {
+        if (r301.isReloading || r301.ammo >= R301_STATS.magSize) return;
+        r301.isReloading = true;
+        r301.reloadStart = Date.now();
+        r301.mouseHeld = false;
+        // Reset recoil on reload
+        r301.recoilX = 0; r301.recoilY = 0; r301.shotCount = 0;
+        updateRecoilIndicator();
+        document.getElementById('reload-container').style.display = 'block';
+    }
+
+    function updateReload(now) {
+        if (!r301.isReloading) return;
+        const elapsed = now - r301.reloadStart;
+        const progress = Math.min(1, elapsed / R301_STATS.reloadTime);
+        document.getElementById('reload-bar').style.width = (progress * 100) + '%';
+
+        if (progress >= 1) {
+            r301.isReloading = false;
+            r301.ammo = R301_STATS.magSize;
+            r301.shotCount = 0;
+            document.getElementById('reload-container').style.display = 'none';
+            updateR301HUD();
+        }
+    }
+
+    function updateRecoilIndicator() {
+        // Map recoil to indicator dot (center = no recoil)
+        const dot = document.getElementById('recoil-dot');
+        const graphW = 80, graphH = 120;
+        // clamp
+        const clampedX = Math.max(-30, Math.min(30, r301.recoilX));
+        const clampedY = Math.max(-graphH*0.8, Math.min(0, r301.recoilY));
+        const px = 50 + (clampedX / 30) * 40; // % from left
+        const py = 90 + (clampedY / (graphH * 0.8)) * 80; // % from top
+        dot.style.left = Math.max(5, Math.min(95, px)) + '%';
+        dot.style.top  = Math.max(5, Math.min(95, py)) + '%';
+    }
+
+    function updateR301HUD() {
+        document.getElementById('ammo-count').innerText = r301.ammo;
+        document.getElementById('hp-val').innerText = Math.max(0, Math.round(r301.targetHP));
+        document.getElementById('hp-bar').style.width = Math.max(0, r301.targetHP / R301_STATS.maxHP * 100) + '%';
+
+        // Mag dots
+        const dots = document.getElementById('mag-dots');
+        dots.innerHTML = '';
+        for (let i = 0; i < R301_STATS.magSize; i++) {
+            const d = document.createElement('div');
+            d.className = 'mag-dot' + (i >= r301.ammo ? ' empty' : '');
+            dots.appendChild(d);
+        }
+    }
+
+    function spawnR301Target() {
+        state.targets = [];
+        const x = width * 0.5 + (Math.random() * 200 - 100);
+        const y = height * 0.5 + (Math.random() * 100 - 50);
+        state.targets.push(new Target(x, y, 'r301'));
+    }
+
+    // ─── Generic Logic ────────────────────────────────────────────────────────────
+    function startGame(mode) {
+        state.mode = mode;
+        state.isPlaying = true;
+        isPaused = false;
+        state.score = 0;
+        state.timeLeft = 60;
+        state.clicks = 0;
+        state.hits = 0;
+        state.targets = [];
+        state.particles = [];
+        hitNumbers.length = 0;
+
+        if (mode === 'r301') {
+            r301.active = true;
+            r301.ammo = R301_STATS.magSize;
+            r301.isReloading = false;
+            r301.isFiring = false;
+            r301.mouseHeld = false;
+            r301.shotCount = 0;
+            r301.recoilX = 0; r301.recoilY = 0;
+            r301.targetHP = R301_STATS.maxHP;
+            r301.targetKills = 0;
+            r301.totalShots = 0;
+            r301.totalHits = 0;
+
+            // Set R-301 visual style
+            cursor.classList.add('r301-cursor');
+            cursorH.style.display = 'block';
+            cursorV.style.display = 'block';
+            document.getElementById('r301-hud').style.display = 'flex';
+            document.getElementById('recoil-indicator').style.display = 'flex';
+            document.getElementById('reload-container').style.display = 'none';
+            ['hud-score-box','hud-time-box','hud-acc-box'].forEach(id => {
+                document.getElementById(id).classList.add('r301-hud');
+            });
+
+            spawnR301Target();
+            updateR301HUD();
+            state.spawnInterval = 99999; // no auto-spawn
+        } else {
+            r301.active = false;
+            cursor.classList.remove('r301-cursor');
+            cursorH.style.display = 'none';
+            cursorV.style.display = 'none';
+            document.getElementById('r301-hud').style.display = 'none';
+            document.getElementById('recoil-indicator').style.display = 'none';
+            ['hud-score-box','hud-time-box','hud-acc-box'].forEach(id =>
+                document.getElementById(id).classList.remove('r301-hud'));
+
+            if (mode === 'quick') state.spawnInterval = 900;
+            else if (mode === 'curve') state.spawnInterval = 1200;
+            else state.spawnInterval = 800;
+        }
+
+        document.getElementById('menu-screen').style.display = 'none';
+        document.getElementById('game-over').style.display = 'none';
+        document.getElementById('pause-menu').style.display = 'none';
+        document.getElementById('game-ui').style.display = 'block';
+
+        updateHUD();
+        lastTime = Date.now();
+        animate();
+
+        const timerInterval = setInterval(() => {
+            if (!state.isPlaying) { clearInterval(timerInterval); return; }
+            if (isPaused) return;
+            state.timeLeft--;
+            updateHUD();
+            if (state.timeLeft <= 0) { clearInterval(timerInterval); endGame(); }
+        }, 1000);
+    }
+
+    function togglePause() {
+        if (!state.isPlaying) return;
+        isPaused = !isPaused;
+        const pm = document.getElementById('pause-menu');
+        if (isPaused) {
+            pm.style.display = 'flex';
+            cancelAnimationFrame(animationId);
+            if (r301.active) r301.mouseHeld = false;
+        } else {
+            pm.style.display = 'none';
+            lastTime = Date.now();
+            animate();
+        }
+    }
+
+    function spawnTarget() {
+        if (state.mode === 'r301') return; // handled separately
+        const margin = 100;
+        const x = Math.random() * (width - margin*2) + margin;
+        const y = Math.random() * (height - margin*2) + margin;
+        const overlap = state.targets.some(t => {
+            const dx = t.x - x, dy = t.y - y;
+            return Math.sqrt(dx*dx+dy*dy) < 100;
+        });
+        if (!overlap) state.targets.push(new Target(x, y, state.mode));
+    }
+
+    function createExplosion(x, y, color) {
+        for (let i = 0; i < 15; i++) state.particles.push(new Particle(x, y, color));
+    }
+
+    function handleInput(e) {
+        const cx = e.clientX, cy = e.clientY;
+        state.clicks++;
+
+        for (let i = state.targets.length - 1; i >= 0; i--) {
+            const t = state.targets[i];
+            const dx = cx - t.x, dy = cy - t.y;
+            if (Math.sqrt(dx*dx+dy*dy) < t.radius) {
+                state.score += 100;
+                state.hits++;
+                createExplosion(t.x, t.y, t.color);
+                state.targets.splice(i, 1);
+                break;
+            }
+        }
+        updateHUD();
+    }
+
+    function updateHUD() {
+        document.getElementById('score').innerText = state.score;
+        document.getElementById('time').innerText = state.timeLeft;
+        const acc = state.clicks === 0 ? 100 : Math.round((state.hits / state.clicks) * 100);
+        document.getElementById('accuracy').innerText = acc + '%';
+    }
+
+    function endGame() {
+        state.isPlaying = false;
+        isPaused = false;
+        cancelAnimationFrame(animationId);
+
+        // Cleanup R-301 visuals
+        cursor.classList.remove('r301-cursor');
+        cursorH.style.display = 'none';
+        cursorV.style.display = 'none';
+        document.getElementById('r301-hud').style.display = 'none';
+        document.getElementById('recoil-indicator').style.display = 'none';
+
+        document.getElementById('game-ui').style.display = 'none';
+        document.getElementById('game-over').style.display = 'flex';
+
+        if (state.mode === 'r301') {
+            document.getElementById('go-title').innerText = 'Session R-301';
+            document.getElementById('stat4-label').innerText = 'Kills';
+            document.getElementById('aps').innerText = r301.targetKills;
+            document.getElementById('total-clicks').innerText = r301.totalShots;
+            document.getElementById('missed-clicks').innerText = r301.totalShots - r301.totalHits;
+            const acc = r301.totalShots === 0 ? 0 : Math.round((r301.totalHits / r301.totalShots) * 100);
+            document.getElementById('final-accuracy').innerText = acc + '%';
+        } else {
+            document.getElementById('go-title').innerText = 'Session Terminée';
+            document.getElementById('stat4-label').innerText = 'Cibles / Sec';
+            document.getElementById('total-clicks').innerText = state.clicks;
+            document.getElementById('missed-clicks').innerText = state.clicks - state.hits;
+            const acc = state.clicks === 0 ? 0 : Math.round((state.hits / state.clicks) * 100);
+            document.getElementById('final-accuracy').innerText = acc + '%';
+            document.getElementById('aps').innerText = Math.round((state.hits / 60) * 10) / 10;
+        }
+        document.getElementById('final-score').innerText = state.score;
+    }
+
+    function returnToMenu() {
+        state.isPlaying = false; isPaused = false;
+        cancelAnimationFrame(animationId);
+        r301.active = false; r301.mouseHeld = false;
+        cursor.classList.remove('r301-cursor');
+        cursorH.style.display = 'none';
+        cursorV.style.display = 'none';
+
+        ['game-over','pause-menu','game-ui'].forEach(id =>
+            document.getElementById(id).style.display = 'none');
+        document.getElementById('menu-screen').style.display = 'flex';
+    }
+
+    // ─── Main Loop ────────────────────────────────────────────────────────────────
+    function animate() {
+        if (!state.isPlaying || isPaused) return;
+
+        const now = Date.now();
+        const deltaTime = now - lastTime;
+        lastTime = now;
+
+        ctx.clearRect(0, 0, width, height);
+
+        // Grid
+        ctx.strokeStyle = r301.active ? 'rgba(255, 149, 0, 0.04)' : 'rgba(0, 243, 255, 0.05)';
+        ctx.lineWidth = 1;
+        const gridSize = 50;
+        const offset = (now / 50) % gridSize;
+        for (let x = 0; x < width; x += gridSize) { ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,height); ctx.stroke(); }
+        for (let y = offset; y < height; y += gridSize) { ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(width,y); ctx.stroke(); }
+
+        // R-301 firing logic (full-auto when mouse held)
+        if (r301.active && r301.mouseHeld && !r301.isReloading) {
+            const cx = parseFloat(cursor.style.left) || width/2;
+            const cy = parseFloat(cursor.style.top)  || height/2;
+            r301Shoot(cx, cy);
+        }
+
+        // Recoil decay (snap back toward 0 when not firing or between shots)
+        if (r301.active) {
+            const decayRate = r301.mouseHeld ? 0.02 : 0.12;
+            r301.recoilX *= (1 - decayRate);
+            r301.recoilY *= (1 - decayRate);
+            if (Math.abs(r301.recoilX) < 0.1) r301.recoilX = 0;
+            if (Math.abs(r301.recoilY) < 0.1) r301.recoilY = 0;
+            updateRecoilIndicator();
+            updateReload(now);
+        }
+
+        // Spawn (non-r301 modes)
+        state.spawnTimer += deltaTime;
+        if (state.spawnTimer > state.spawnInterval) {
+            spawnTarget();
+            state.spawnTimer = 0;
+            if (state.spawnInterval > 400) state.spawnInterval -= 5;
+        }
+
+        // Draw targets
+        state.targets.forEach(t => { t.update(deltaTime); t.draw(ctx); });
+        state.targets = state.targets.filter(t => !t.markedForDeletion);
+
+        // Particles
+        state.particles.forEach(p => { p.update(); p.draw(ctx); });
+        state.particles = state.particles.filter(p => p.life > 0);
+
+        // Hit numbers
+        hitNumbers.forEach(n => { n.update(); n.draw(ctx); });
+        hitNumbers.splice(0, hitNumbers.findIndex(n => n.life > 0));
+        for (let i = hitNumbers.length - 1; i >= 0; i--) {
+            if (hitNumbers[i].life <= 0) hitNumbers.splice(i, 1);
+        }
+
+        // R-301: draw recoil-offset visual cursor indicator on canvas (small dot at actual aim point)
+        if (r301.active && state.targets.length > 0) {
+            const cx = parseFloat(cursor.style.left) || width/2;
+            const cy = parseFloat(cursor.style.top)  || height/2;
+            const aimX = cx + r301.recoilX;
+            const aimY = cy + r301.recoilY;
+
+            // Actual impact dot (red, where bullets actually go)
+            ctx.beginPath();
+            ctx.arc(aimX, aimY, 4, 0, Math.PI*2);
+            ctx.fillStyle = 'rgba(255, 80, 0, 0.8)';
+            ctx.shadowBlur = 8; ctx.shadowColor = '#ff4400';
+            ctx.fill(); ctx.shadowBlur = 0;
+
+            // Crosshair spread lines (expand based on recoil magnitude)
+            const spread = Math.sqrt(r301.recoilX*r301.recoilX + r301.recoilY*r301.recoilY) * 0.2 + 8;
+            ctx.strokeStyle = 'rgba(255, 149, 0, 0.6)';
+            ctx.lineWidth = 1.5;
+            const lines = [[-spread,0,-spread*0.4,0],[spread*0.4,0,spread,0],[0,-spread,0,-spread*0.4],[0,spread*0.4,0,spread]];
+            lines.forEach(([x1,y1,x2,y2]) => {
+                ctx.beginPath();
+                ctx.moveTo(aimX+x1, aimY+y1);
+                ctx.lineTo(aimX+x2, aimY+y2);
+                ctx.stroke();
+            });
+        }
+
+        animationId = requestAnimationFrame(animate);
+    }
+</script>
+</body>
+</html>
