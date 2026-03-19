@@ -1,80 +1,75 @@
 const menuData = {
     "les last versions direct":
         {
-            "All_IN_ONE_CASINO":"casino/all_in_one/v2.html",
-            "Roulette a 2":"casino/roulette/roulette.html",
-            "chess a 2": "chess/chess.html",
-            "Combat a 2": "combat_2_joueur/fonctionnel/testtt.html",
-            "cookie_clicker ": "cookie/cokkie_clicker.html",
-            "geometry dash": "geometry_dash/geometry_dash.html",
-            "shooter": "shooter/fonctionnel/parfait/test_4.html",
-            "snake": "snake/snake.html",
+            "Aim trainer":"Jouable/aim_trainer/aim_trainer_3/aim_trainer_3.html",
+
+            "All_IN_ONE_CASINO":"Jouable/casino/all_in_one/All_in_one_1.html",
+
+            "Roulette a 2":"Jouable/casino/roulette/roulette_1/roulette_1.html",
+
+            "chess a 2": "Jouable/chess/chess_1/chess_1.html",
+
+            "Combat a 2": "Jouable/combat_2_joueur/fonctionnel/C-2-j.html",
+
+            "cookie_clicker ": "Jouable/cookie/cookie_clicker_1/cookie_clicker_1.html",
+
+            "geometry dash": "Jouable/geometry_dash/geometry_dash_1/geometry_dash_1.html",
+
+            "shooter": "Jouable/shooter/shooter_5/shooter_5.html",
+
+            "snake": "Jouable/snake/snake_1/snake_1.html",
+
+            "Tetris" :"Jouable/tetris/tetris_2/tetris_2.html"
 
         },
+    "aim Trainer":{
+        "Aim trainer apex ":"Jouable/aim_trainer/aim_trainer_3/aim_trainer_3.html",
+        "Aim trainer base ":"Jouable/aim trainer/aim_trainer_1/aim_trainer_1.html"},
+    "Tetris":{
+        "tetris 1 ":"Jouable/tetris/tetris_2/tetris_2.html",
+        "tetris_2": "Jouable/tetris/tetris_1/tetris_1.html"
+    },
 
     "casino": {
+
         "all_in_one": {
-            "v1.html": "casino/all_in_one/v1.html",
-            "v2.html": "casino/all_in_one/v2.html"
+            "All in one ": "Jouable/casino/all_in_one/All_in_one_1.html"
         },
+
         "roulette": {
-            "roulette.html": "casino/roulette/roulette.html",
-            "roulette_claude.html": "casino/roulette/roulette_claude.html"
+            "roulette 1": "Jouable/casino/roulette/roulette_1.html",
+            "roulette 2 ": "Jouable/casino/roulette/roulette_2.html"
         }
     },
     "chess": {
-        "chess a 2": "chess/chess.html",
-        "chess a 2 v2": "chess/chess_v3.html"
+        "chess a 2": "Jouable/chess/chess_1/chess_1.html",
+        "chess a 2 ": "Jouable/chess/chess_2/chess_2.html"
     },
     "combat_2_joueur": {
-        "a_debug": {
-            "jeu-combat (1).html": "combat_2_joueur/a_debug/jeu-combat (1).html",
-            "jeu-combat (2).html": "combat_2_joueur/a_debug/jeu-combat (2).html",
-            "jeu_chat_claude.html": "combat_2_joueur/a_debug/jeu_chat_claude.html"
-        },
-        "fonctionnel": {
-            "testtt.html": "combat_2_joueur/fonctionnel/testtt.html"
-        }
+            "Combat a 2": "Jouable/combat_2_joueur/C-2-j/C-2-j.html"
+
     },
-    "cookie": {
-        "cokkie_clicker.html": "cookie/cokkie_clicker.html"
-    },
-    "farmer": {
-        "a_debug": {
-            "test_3.html": "farmer/a_debug/test_3.html",
-            "test_4.html": "farmer/a_debug/test_4.html"
-        },
-        "fonctionnel": {
-            "test_2.html": "farmer/fonctionnel/test_2.html"
-        }
+    "cookie clicker": {
+        "cookie_clicker": "Jouable/cookie_clicker/cookie_clicker_1/cookie_clicker_1.html"
     },
     "geometry_dash": {
-        "geometry_dash.html": "geometry_dash/geometry_dash.html"
+        "geometry_dash": "geometry_dash/geometry_dash_1/geometry_dash_1.html"
     },
-    "pacman": {
-        "pacman.html": "pacman/pacman.html"
-    },
+
     "shooter": {
-        "a_debug": {
-            "test_4.html": "shooter/a_debug/test_4.html"
-        },
-        "fonctionnel": {
-            "modifiable": {
-                "test_3.html": "shooter/fonctionnel/modifiable/test_3.html"
-            },
             "parfait": {
-                "test_1.html": "shooter/fonctionnel/parfait/test_1.html",
-                "test_2.html": "shooter/fonctionnel/parfait/test_2.html",
-                "test_4.html": "shooter/fonctionnel/parfait/test_4.html",
-                "test_5.html": "shooter/fonctionnel/parfait/test_5.html"
-            }
-        },
+                "Shooter 1 ": "Jouable/shooter/Shooter_1/shooter_1.html",
+                "Shooter 2 ": "Jouable/shooter/Shooter_2/shooter_2.html",
+                "Shooter 3 ": "Jouable/shooter/Shooter_3/shooter_3.html",
+                "Shooter 5": "Jouable/shooter/Shooter_5/shooter_5.html"
+            },
+
         "simulation": {
             "jeux_chat.html": "shooter/simulation/jeux_chat.html"
         }
     },
     "snake": {
-        "snake.html": "snake/snake.html",
+        "snake.html": "Jouable/snake/snake_1/snake_1.html",
     }
 };
 

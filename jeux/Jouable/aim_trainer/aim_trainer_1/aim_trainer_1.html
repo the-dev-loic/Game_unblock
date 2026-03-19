@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NeuroAim - Trainer Pro</title>
+    <link href="aim_trainer_1.css" rel="stylesheet">
+    <style>
+
+    </style>
+</head>
+<body>
+
+<!-- Custom Cursor -->
+<div id="cursor"></div>
+
+<!-- Main Menu -->
+<div id="menu-screen">
+    <h1>NeuroAim</h1>
+    <div class="mode-select">
+        <div class="card">
+            <h2>Flickshot</h2>
+            <p>Cibles statiques apparaissant aléatoirement. Vitesse et précision.</p>
+            <button class="btn" onclick="startGame('flick')">Commencer</button>
+        </div>
+        <div class="card">
+            <h2>Quickscope</h2>
+            <p>Cibles qui rétrécissent rapidement. Réflexes extrêmes.</p>
+            <button class="btn" onclick="startGame('quick')">Commencer</button>
+        </div>
+        <div class="card">
+            <h2>Aim Courbe</h2>
+            <p>Suivez les cibles en mouvement lent. Maîtrisez le tracking.</p>
+            <button class="btn" onclick="startGame('curve')">Commencer</button>
+        </div>
+    </div>
+</div>
+
+<!-- Game UI -->
+<div id="game-ui">
+    <div class="hud-top">
+        <div class="stat-box">
+            <span class="stat-label">SCORE</span>
+            <span id="score">0</span>
+        </div>
+        <div class="stat-box">
+            <span class="stat-label">TEMPS</span>
+            <span id="time">60</span>
+        </div>
+        <div class="stat-box">
+            <span class="stat-label">PRÉCISION</span>
+            <span id="accuracy">100%</span>
+        </div>
+        <button class="pause-btn-hud" onclick="togglePause()">PAUSE (ESC)</button>
+    </div>
+</div>
+
+<!-- Pause Menu -->
+<div id="pause-menu">
+    <div class="pause-card">
+        <h2>PAUSE</h2>
+
+        <div class="control-group">
+            <label for="sensitivity">Sensibilité Souris</label>
+            <input type="range" id="sensitivity" min="0.1" max="2.0" step="0.1" value="1.0">
+        </div>
+
+        <div class="pause-actions">
+            <button class="btn" onclick="togglePause()">Reprendre</button>
+            <button class="btn" style="border-color: #ff3333; color: #ff3333;" onclick="returnToMenu()">Quitter</button>
+        </div>
+    </div>
+</div>
+
+<!-- Game Over Screen -->
+<div id="game-over">
+    <h1>Session Terminée</h1>
+    <div class="score-display" id="final-score">0</div>
+    <div class="stats-grid">
+        <div class="stat-item">
+            <h3>Clics Totaux</h3>
+            <span id="total-clicks">0</span>
+        </div>
+        <div class="stat-item">
+            <h3>Clics Manqués</h3>
+            <span id="missed-clicks" style="color: #ff3333">0</span>
+        </div>
+        <div class="stat-item">
+            <h3>Précision</h3>
+            <span id="final-accuracy">0%</span>
+        </div>
+        <div class="stat-item">
+            <h3>Cibles / Sec</h3>
+            <span id="aps">0</span>
+        </div>
+    </div>
+    <button class="btn" onclick="returnToMenu()">Menu Principal</button>
+</div>
+
+<canvas id="gameCanvas"></canvas>
+
+<script src="aim_trainer_1.js">
+
+
+</script>
+</body>
+</html>
