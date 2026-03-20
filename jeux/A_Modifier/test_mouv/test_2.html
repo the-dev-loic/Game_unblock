@@ -1,0 +1,653 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lucio Style Movement - Wall Ride Parkour</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #050510;
+            color: white;
+            user-select: none;
+        }
+
+        #canvas-container {
+            width: 100vw;
+            height: 100vh;
+            display: block;
+        }
+
+        #ui-layer {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+
+        #crosshair {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 10px;
+            height: 10px;
+            transform: translate(-50%, -50%);
+            background-color: #00ffcc;
+            border-radius: 50%;
+            box-shadow: 0 0 10px #00ffcc;
+            transition: transform 0.1s;
+        }
+
+        .hud-panel {
+            background: rgba(0, 20, 40, 0.7);
+            padding: 20px;
+            border-radius: 12px;
+            backdrop-filter: blur(5px);
+            border: 1px solid rgba(0, 255, 204, 0.3);
+            max-width: 350px;
+            box-shadow: 0 0 20px rgba(0, 255, 204, 0.1);
+        }
+
+        h1 {
+            font-size: 1.5rem;
+            margin: 0 0 15px 0;
+            color: #00ffcc;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            text-shadow: 0 0 10px rgba(0, 255, 204, 0.5);
+            font-style: italic;
+        }
+
+        .controls-list {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+            font-size: 0.95rem;
+            line-height: 1.8;
+            color: #ddd;
+        }
+
+        .controls-list li span {
+            color: #ff0055;
+            font-weight: bold;
+            background: rgba(255, 0, 85, 0.2);
+            padding: 2px 8px;
+            border-radius: 4px;
+            margin-right: 8px;
+            border: 1px solid rgba(255, 0, 85, 0.4);
+        }
+
+        #status-container {
+            display: flex;
+            gap: 15px;
+            align-items: flex-end;
+        }
+
+        .status-box {
+            padding: 10px 20px;
+            border-radius: 6px;
+            font-weight: 900;
+            font-size: 1rem;
+            text-transform: uppercase;
+            opacity: 0;
+            transform: scale(0.9);
+            transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            border: 2px solid transparent;
+        }
+
+        .status-box.active {
+            opacity: 1;
+            transform: scale(1);
+        }
+
+        .status-wall {
+            background-color: #ffaa00;
+            color: #000;
+            box-shadow: 0 0 15px #ffaa00;
+            border-color: #fff;
+        }
+
+        .status-air {
+            background-color: #00ffcc;
+            color: #000;
+            box-shadow: 0 0 15px #00ffcc;
+        }
+
+        #blocker {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: radial-gradient(circle, rgba(0,0,0,0.6) 0%, rgba(0,0,0,0.95) 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+            z-index: 10;
+            pointer-events: auto;
+            cursor: pointer;
+            backdrop-filter: blur(5px);
+        }
+
+        #instructions {
+            text-align: center;
+            color: #fff;
+        }
+
+        #instructions h2 {
+            font-size: 4rem;
+            margin: 0;
+            background: linear-gradient(45deg, #00ffcc, #0088ff);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            font-style: italic;
+            font-weight: 900;
+            text-transform: uppercase;
+        }
+
+        #instructions p {
+            font-size: 1.2rem;
+            color: #aaa;
+            margin-top: 10px;
+        }
+
+        .key-hint {
+            display: inline-block;
+            border: 1px solid #fff;
+            border-radius: 4px;
+            padding: 2px 6px;
+            margin: 0 2px;
+            font-size: 0.8em;
+            color: #fff;
+        }
+    </style>
+</head>
+<body>
+
+<div id="blocker">
+    <div id="instructions">
+        <h2>Wall Ride Pro</h2>
+        <p>Cliquez pour commencer</p>
+        <div style="margin-top: 30px; font-size: 0.9rem; color: #888;">
+            Style Lucio / Overwatch Movement
+        </div>
+    </div>
+</div>
+
+<div id="ui-layer">
+    <div class="hud-panel">
+        <h1>Mouvements</h1>
+        <ul class="controls-list">
+            <li><span>WASD</span> Se déplacer</li>
+            <li><span>ESPACE</span> Sauter / Wall Jump</li>
+            <li><span>SHIFT</span> Sprint (Sol)</li>
+            <li><span>SOURIS</span> Viser</li>
+        </ul>
+        <div style="margin-top: 15px; font-size: 0.8rem; color: #888; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 10px;">
+            Astuce: Courez contre les murs pour y rester collé et sauter plus haut.
+        </div>
+    </div>
+
+    <div id="crosshair"></div>
+
+    <div id="status-container">
+        <div id="ind-wall" class="status-box status-wall">Wall Ride</div>
+        <div id="ind-air" class="status-box status-air">Air Time</div>
+    </div>
+</div>
+
+<div id="canvas-container"></div>
+
+<!-- Import Three.js and Cannon-es -->
+<script type="importmap">
+    {
+        "imports": {
+            "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+            "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/",
+            "cannon-es": "https://unpkg.com/cannon-es@0.20.0/dist/cannon-es.js"
+        }
+    }
+</script>
+
+<script type="module">
+    import * as THREE from 'three';
+    import * as CANNON from 'cannon-es';
+
+    // --- Configuration ---
+    const CONFIG = {
+        playerSpeed: 12,
+        sprintSpeed: 20,
+        jumpForce: 8,
+        wallJumpForce: 10,
+        wallRideGravity: 0.5, // Reduced gravity when on wall
+        wallStickForce: 15,   // Force to keep player on wall
+        maxWallRideTime: 2.0, // Seconds before falling off automatically (optional fatigue)
+        friction: 0.0,
+        airResistance: 0.95
+    };
+
+    // --- Globals ---
+    let camera, scene, renderer;
+    let world, physicsBody, physicsMaterial;
+    let lastTime;
+    let moveForward = false, moveBackward = false, moveLeft = false, moveRight = false;
+    let isSprinting = false;
+
+    // Movement States
+    let isGrounded = false;
+    let isWallRiding = false;
+    let wallNormal = new CANNON.Vec3();
+    let wallRideTimer = 0;
+    let jumpCount = 0;
+    const MAX_JUMPS = 2; // Double jump allowed
+
+    // UI Elements
+    const blocker = document.getElementById('blocker');
+    const indWall = document.getElementById('ind-wall');
+    const indAir = document.getElementById('ind-air');
+    const crosshair = document.getElementById('crosshair');
+
+    // Arrays
+    const walls = [];
+
+    init();
+    animate();
+
+    function init() {
+        // 1. Setup Three.js Scene
+        const container = document.getElementById('canvas-container');
+        scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x050510);
+        scene.fog = new THREE.FogExp2(0x050510, 0.015);
+
+        camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+
+        renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.shadowMap.enabled = true;
+        renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+        container.appendChild(renderer.domElement);
+
+        // Lights
+        const hemiLight = new THREE.HemisphereLight(0x00ffcc, 0x000000, 0.4);
+        scene.add(hemiLight);
+
+        const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
+        dirLight.position.set(20, 50, 20);
+        dirLight.castShadow = true;
+        dirLight.shadow.mapSize.width = 2048;
+        dirLight.shadow.mapSize.height = 2048;
+        dirLight.shadow.camera.near = 0.5;
+        dirLight.shadow.camera.far = 100;
+        dirLight.shadow.camera.left = -30;
+        dirLight.shadow.camera.right = 30;
+        dirLight.shadow.camera.top = 30;
+        dirLight.shadow.camera.bottom = -30;
+        scene.add(dirLight);
+
+        // 2. Setup Cannon.js Physics
+        world = new CANNON.World();
+        world.gravity.set(0, -30, 0); // High gravity for snappy feel
+        world.broadphase = new CANNON.SAPBroadphase(world);
+        world.allowSleep = true;
+
+        // Materials
+        const defaultMaterial = new CANNON.Material('default');
+        const playerMaterial = new CANNON.Material('player');
+
+        const playerContactMaterial = new CANNON.ContactMaterial(playerMaterial, defaultMaterial, {
+            friction: CONFIG.friction,
+            restitution: 0.0
+        });
+        world.addContactMaterial(playerContactMaterial);
+
+        // 3. Create Player
+        const radius = 0.8;
+        const shape = new CANNON.Sphere(radius);
+        physicsBody = new CANNON.Body({
+            mass: 5,
+            material: playerMaterial,
+            linearDamping: 0.0,
+            angularDamping: 1.0
+        });
+        physicsBody.addShape(shape);
+        physicsBody.position.set(0, 5, 0);
+        physicsBody.fixedRotation = true;
+        world.addBody(physicsBody);
+
+        // Collision Events
+        physicsBody.addEventListener('collide', (e) => {
+            const contactNormal = new CANNON.Vec3();
+            e.contact.ni.negate(contactNormal); // Normal pointing out of the hit object
+
+            const up = new CANNON.Vec3(0, 1, 0);
+            const dot = contactNormal.dot(up);
+
+            // Ground Detection (Normal is almost Up)
+            if (dot > 0.7) {
+                isGrounded = true;
+                isWallRiding = false;
+                jumpCount = 0;
+                wallRideTimer = 0;
+                indWall.classList.remove('active');
+                indAir.classList.remove('active');
+                crosshair.style.transform = 'translate(-50%, -50%) scale(1)';
+                crosshair.style.backgroundColor = '#00ffcc';
+            }
+            // Wall Detection (Normal is perpendicular to Up)
+            else if (Math.abs(dot) < 0.3) {
+                // We hit a wall
+                // Only activate wall ride if we have some forward velocity towards it or are pressing towards it
+                // For simplicity in this demo, we activate on contact if in air
+                if (!isGrounded) {
+                    isWallRiding = true;
+                    wallNormal.copy(contactNormal);
+                    wallRideTimer = 0;
+                    indWall.classList.add('active');
+                    indAir.classList.remove('active');
+                    crosshair.style.transform = 'translate(-50%, -50%) scale(1.5)';
+                    crosshair.style.backgroundColor = '#ffaa00';
+                }
+            }
+        });
+
+        // 4. Create Map (Lucio Style - Verticality & Loops)
+        createMap(defaultMaterial);
+
+        // 5. Input Handling
+        document.addEventListener('keydown', onKeyDown);
+        document.addEventListener('keyup', onKeyUp);
+        document.addEventListener('mousedown', () => {
+            if (blocker.style.display !== 'none') {
+                blocker.style.display = 'none';
+                document.body.requestPointerLock();
+            }
+        });
+
+        document.addEventListener('pointerlockchange', () => {
+            if (document.pointerLockElement === document.body) {
+                blocker.style.display = 'none';
+            } else {
+                blocker.style.display = 'flex';
+            }
+        });
+
+        document.body.addEventListener('mousemove', (event) => {
+            if (document.pointerLockElement === document.body) {
+                camera.rotation.y -= event.movementX * 0.002;
+                camera.rotation.x -= event.movementY * 0.002;
+                camera.rotation.x = Math.max(-Math.PI / 2, Math.min(Math.PI / 2, camera.rotation.x));
+            }
+        });
+
+        window.addEventListener('resize', onWindowResize);
+    }
+
+    function createMap(material) {
+        function createBox(x, y, z, w, h, d, color, isWall = false) {
+            const geo = new THREE.BoxGeometry(w, h, d);
+            // Neon emissive material for style
+            const mat = new THREE.MeshStandardMaterial({
+                color: color,
+                roughness: 0.2,
+                metalness: 0.8,
+                emissive: color,
+                emissiveIntensity: 0.2
+            });
+            const mesh = new THREE.Mesh(geo, mat);
+            mesh.position.set(x, y, z);
+            mesh.castShadow = true;
+            mesh.receiveShadow = true;
+            scene.add(mesh);
+
+            const shape = new CANNON.Box(new CANNON.Vec3(w/2, h/2, d/2));
+            const body = new CANNON.Body({ mass: 0, material: material });
+            body.addShape(shape);
+            body.position.set(x, y, z);
+            world.addBody(body);
+
+            if (isWall) walls.push(body);
+            return { mesh, body };
+        }
+
+        // Floor
+        createBox(0, -1, 0, 100, 2, 100, 0x111122);
+
+        // Starting Platform
+        createBox(0, 2, 0, 10, 4, 10, 0x004444);
+
+        // The "Lucio" Walls - Tall vertical surfaces
+        // Left Wall
+        createBox(-15, 15, 0, 2, 30, 40, 0xff0055, true);
+        // Right Wall
+        createBox(15, 15, 0, 2, 30, 40, 0x00ffcc, true);
+
+        // Central Pillar for wall jumping around
+        createBox(0, 10, -20, 8, 20, 8, 0xffaa00, true);
+
+        // Floating Platforms
+        createBox(0, 8, -15, 6, 1, 6, 0x4444ff);
+        createBox(0, 16, -25, 6, 1, 6, 0x4444ff);
+        createBox(0, 24, -35, 6, 1, 6, 0x4444ff);
+
+        // Loop structure
+        createBox(0, 35, -45, 4, 1, 20, 0xffffff);
+        createBox(0, 45, -45, 2, 10, 20, 0x333333); // Back wall of loop
+
+        // Random obstacles
+        for(let i=0; i<15; i++) {
+            const x = (Math.random() - 0.5) * 80;
+            const z = (Math.random() - 0.5) * 80 - 20;
+            const h = Math.random() * 10 + 2;
+            if(Math.abs(x) > 5 || Math.abs(z) > 10) {
+                createBox(x, h/2, z, 4, h, 4, 0x222233);
+            }
+        }
+
+        // Grid Helper for style
+        const gridHelper = new THREE.GridHelper(200, 100, 0x222244, 0x111122);
+        scene.add(gridHelper);
+    }
+
+    function onKeyDown(event) {
+        switch (event.code) {
+            case 'ArrowUp': case 'KeyW': moveForward = true; break;
+            case 'ArrowLeft': case 'KeyA': moveLeft = true; break;
+            case 'ArrowDown': case 'KeyS': moveBackward = true; break;
+            case 'ArrowRight': case 'KeyD': moveRight = true; break;
+            case 'ShiftLeft': case 'ShiftRight': isSprinting = true; break;
+            case 'Space': handleJump(); break;
+        }
+    }
+
+    function onKeyUp(event) {
+        switch (event.code) {
+            case 'ArrowUp': case 'KeyW': moveForward = false; break;
+            case 'ArrowLeft': case 'KeyA': moveLeft = false; break;
+            case 'ArrowDown': case 'KeyS': moveBackward = false; break;
+            case 'ArrowRight': case 'KeyD': moveRight = false; break;
+            case 'ShiftLeft': case 'ShiftRight': isSprinting = false; break;
+        }
+    }
+
+    function handleJump() {
+        if (isGrounded) {
+            // Normal Jump
+            physicsBody.velocity.y = CONFIG.jumpForce;
+            isGrounded = false;
+            jumpCount = 1;
+            indAir.classList.add('active');
+        } else if (isWallRiding) {
+            // Wall Jump
+            // Jump away from wall normal + Up
+            const jumpDir = new CANNON.Vec3();
+            jumpDir.copy(wallNormal);
+            jumpDir.scale(-1, jumpDir); // Point away from wall
+            jumpDir.y += 0.5; // Add upward component
+            jumpDir.normalize();
+
+            physicsBody.velocity.x = jumpDir.x * CONFIG.wallJumpForce;
+            physicsBody.velocity.y = jumpDir.y * CONFIG.wallJumpForce;
+            physicsBody.velocity.z = jumpDir.z * CONFIG.wallJumpForce;
+
+            isWallRiding = false;
+            indWall.classList.remove('active');
+            jumpCount = 1;
+        } else if (jumpCount < MAX_JUMPS) {
+            // Double Jump
+            physicsBody.velocity.y = CONFIG.jumpForce * 0.8;
+            jumpCount++;
+            // Small forward boost
+            const forward = new THREE.Vector3(0, 0, -1).applyQuaternion(camera.quaternion);
+            forward.y = 0;
+            forward.normalize();
+            physicsBody.velocity.x += forward.x * 3;
+            physicsBody.velocity.z += forward.z * 3;
+        }
+    }
+
+    function updateMovement(dt) {
+        // 1. Calculate Input Direction relative to Camera
+        const inputVector = new THREE.Vector3(0, 0, 0);
+        if (moveForward) inputVector.z -= 1;
+        if (moveBackward) inputVector.z += 1;
+        if (moveLeft) inputVector.x -= 1;
+        if (moveRight) inputVector.x += 1;
+
+        let currentSpeed = isSprinting ? CONFIG.sprintSpeed : CONFIG.playerSpeed;
+
+        if (isWallRiding) {
+            // --- WALL RIDE LOGIC ---
+            wallRideTimer += dt;
+
+            // Define Wall Coordinate System
+            // Normal is wallNormal. Up is (0,1,0). Right is Normal x Up.
+            const up = new CANNON.Vec3(0, 1, 0);
+            const right = new CANNON.Vec3();
+            wallNormal.cross(up, right); // Tangent vector along the wall horizontally
+
+            // Project input onto the wall plane
+            // We want to move along 'right' (strafe) and 'up' (climb)
+
+            let moveX = 0;
+            let moveY = 0;
+
+            if (inputVector.length() > 0) {
+                inputVector.normalize();
+                // Convert camera-relative input to world-relative
+                const camDir = new THREE.Vector3(0, 0, -1).applyQuaternion(camera.quaternion);
+                const camRight = new THREE.Vector3(1, 0, 0).applyQuaternion(camera.quaternion);
+
+                // This is complex to map perfectly to wall surface, so we simplify:
+                // Forward/Back on keyboard moves Up/Down the wall
+                // Left/Right moves along the wall tangent
+
+                if (moveForward) moveY = 1;
+                if (moveBackward) moveY = -1;
+
+                // Determine strafe direction based on camera look relative to wall normal
+                // Dot product of camera right and wall right
+                const camRightVec = new CANNON.Vec3(camRight.x, camRight.y, camRight.z);
+                const strafeDir = camRightVec.dot(right) > 0 ? 1 : -1;
+
+                if (moveRight) moveX = strafeDir;
+                if (moveLeft) moveX = -strafeDir;
+            }
+
+            // Apply Velocity along wall surface
+            // We override X and Z mostly, but keep Y controlled for climbing
+            const wallRightWorld = new THREE.Vector3(right.x, right.y, right.z);
+
+            physicsBody.velocity.x = wallRightWorld.x * moveX * currentSpeed;
+            physicsBody.velocity.z = wallRightWorld.z * moveX * currentSpeed;
+
+            // Climbing speed is slower
+            physicsBody.velocity.y = moveY * (currentSpeed * 0.6);
+
+            // Stick to wall: Apply force towards the wall to counteract gravity/drift
+            const stickForce = wallNormal.scale(-CONFIG.wallStickForce);
+            physicsBody.applyForce(stickForce, physicsBody.position);
+
+            // Disable standard gravity while on wall
+            // We do this by applying an upward force equal to gravity * (1 - wallRideGravityScale)
+            const antiGravity = new CANNON.Vec3(0, 30 * (1 - CONFIG.wallRideGravity), 0);
+            physicsBody.applyForce(antiGravity, physicsBody.position);
+
+            // Auto fall off if timer expires (optional mechanic)
+            if (wallRideTimer > CONFIG.maxWallRideTime && moveY <= 0) {
+                isWallRiding = false;
+                indWall.classList.remove('active');
+            }
+
+        } else {
+            // --- STANDARD AIR/GROUND LOGIC ---
+
+            // Reset wall ride flag if we lost contact (handled in collide event mostly, but safety check)
+            // If we are not grounded and not wall riding, we are falling
+            if (!isGrounded) {
+                indAir.classList.add('active');
+            }
+
+            if (inputVector.length() > 0) {
+                inputVector.normalize();
+                inputVector.applyQuaternion(camera.quaternion);
+                inputVector.y = 0;
+                inputVector.normalize();
+
+                // Accelerate
+                physicsBody.velocity.x += inputVector.x * currentSpeed * dt * 5;
+                physicsBody.velocity.z += inputVector.z * currentSpeed * dt * 5;
+            } else {
+                // Air friction
+                physicsBody.velocity.x *= CONFIG.airResistance;
+                physicsBody.velocity.z *= CONFIG.airResistance;
+            }
+
+            // Cap horizontal speed
+            const horizVel = Math.sqrt(physicsBody.velocity.x**2 + physicsBody.velocity.z**2);
+            if (horizVel > currentSpeed) {
+                const ratio = currentSpeed / horizVel;
+                physicsBody.velocity.x *= ratio;
+                physicsBody.velocity.z *= ratio;
+            }
+        }
+    }
+
+    function animate(time) {
+        requestAnimationFrame(animate);
+
+        const dt = lastTime ? (time - lastTime) / 1000 : 0;
+        lastTime = time;
+
+        if (dt < 0.1) {
+            world.step(1 / 60, dt, 3);
+
+            // Sync Camera
+            camera.position.copy(physicsBody.position);
+            camera.position.y += 0.6; // Eye height
+
+            updateMovement(dt);
+        }
+
+        renderer.render(scene, camera);
+    }
+
+    function onWindowResize() {
+        camera.aspect = window.innerWidth / window.innerHeight;
+        camera.updateProjectionMatrix();
+        renderer.setSize(window.innerWidth, window.innerHeight);
+    }
+</script>
+</body>
+</html>
+

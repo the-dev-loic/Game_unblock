@@ -24,7 +24,10 @@ const menuData = {
         },
     "aim Trainer":{
         "Aim trainer apex ":"Jouable/aim_trainer/aim_trainer_3/aim_trainer_3.html",
-        "Aim trainer base ":"Jouable/aim trainer/aim_trainer_1/aim_trainer_1.html"},
+        "Aim trainer base ":"Jouable/aim trainer/aim_trainer_1/aim_trainer_1.html",
+        "Aim trainer v4":"Jouable/aim_trainer/aim_trainer_4/aim_trainer_4.html"
+    },
+
     "Tetris":{
         "tetris 1 ":"Jouable/tetris/tetris_2/tetris_2.html",
         "tetris_2": "Jouable/tetris/tetris_1/tetris_1.html"

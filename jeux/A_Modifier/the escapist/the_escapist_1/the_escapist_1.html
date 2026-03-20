@@ -1,0 +1,581 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Prison Escape - Pixel Style</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
+
+        :root {
+            --bg-color: #2c3e50;
+            --ui-bg: #1a1a1a;
+            --ui-border: #4a4a4a;
+            --text-color: #ecf0f1;
+            --accent-green: #2ecc71;
+            --accent-red: #e74c3c;
+            --accent-orange: #f39c12;
+            --bar-bg: #000;
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: var(--bg-color);
+            font-family: 'Press Start 2P', cursive;
+            overflow: hidden;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            color: var(--text-color);
+            user-select: none;
+        }
+
+        #game-container {
+            position: relative;
+            width: 800px;
+            height: 600px;
+            box-shadow: 0 0 20px rgba(0,0,0,0.5);
+            border: 4px solid var(--ui-border);
+            background-color: #000;
+        }
+
+        canvas {
+            display: block;
+            image-rendering: pixelated; /* Crucial for retro look */
+            width: 100%;
+            height: 100%;
+        }
+
+        /* HUD Overlay */
+        #hud {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            padding: 10px;
+            box-sizing: border-box;
+            pointer-events: none;
+            display: flex;
+            justify-content: space-between;
+            text-shadow: 2px 2px 0 #000;
+        }
+
+        .stat-box {
+            background: rgba(0, 0, 0, 0.6);
+            border: 2px solid var(--ui-border);
+            padding: 8px;
+            width: 200px;
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+
+        .stat-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 10px;
+        }
+
+        .bar-container {
+            flex-grow: 1;
+            height: 10px;
+            background: var(--bar-bg);
+            border: 1px solid #555;
+            position: relative;
+        }
+
+        .bar-fill {
+            height: 100%;
+            width: 0%;
+            transition: width 0.2s;
+        }
+
+        #heat-bar { background-color: var(--accent-red); }
+        #energy-bar { background-color: var(--accent-orange); }
+        #strength-bar { background-color: var(--accent-green); }
+
+        .time-display {
+            position: absolute;
+            top: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0,0,0,0.8);
+            padding: 5px 15px;
+            border: 2px solid var(--ui-border);
+            font-size: 12px;
+            color: #fff;
+        }
+
+        /* Messages */
+        #message-area {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            text-align: center;
+            width: 80%;
+            pointer-events: none;
+        }
+
+        .msg {
+            background: rgba(0,0,0,0.8);
+            color: #fff;
+            padding: 5px 10px;
+            font-size: 10px;
+            margin-bottom: 5px;
+            display: inline-block;
+            border: 1px solid #555;
+            animation: fadeOut 3s forwards;
+        }
+
+        @keyframes fadeOut {
+            0% { opacity: 1; }
+            80% { opacity: 1; }
+            100% { opacity: 0; }
+        }
+
+        /* Start Screen */
+        #start-screen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.85);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 10;
+            text-align: center;
+        }
+
+        h1 {
+            color: var(--accent-orange);
+            text-shadow: 4px 4px 0 #000;
+            font-size: 40px;
+            margin-bottom: 20px;
+            line-height: 1.5;
+        }
+
+        button {
+            background: var(--accent-green);
+            border: 4px solid #27ae60;
+            color: #000;
+            font-family: 'Press Start 2P', cursive;
+            padding: 15px 30px;
+            font-size: 16px;
+            cursor: pointer;
+            text-transform: uppercase;
+            box-shadow: 0 4px 0 #27ae60;
+        }
+
+        button:active {
+            transform: translateY(4px);
+            box-shadow: 0 0 0 #27ae60;
+        }
+
+        .controls-info {
+            margin-top: 30px;
+            font-size: 10px;
+            color: #aaa;
+            line-height: 1.8;
+        }
+
+        .key {
+            display: inline-block;
+            background: #333;
+            padding: 2px 6px;
+            border-radius: 4px;
+            color: #fff;
+            border: 1px solid #555;
+        }
+    </style>
+</head>
+<body>
+
+<div id="game-container">
+    <canvas id="gameCanvas" width="320" height="240"></canvas>
+
+    <div id="hud">
+        <div class="stat-box">
+            <div class="stat-row">
+                <span>HEAT</span>
+                <div class="bar-container"><div id="heat-bar" class="bar-fill"></div></div>
+            </div>
+            <div class="stat-row">
+                <span>ENERGY</span>
+                <div class="bar-container"><div id="energy-bar" class="bar-fill"></div></div>
+            </div>
+            <div class="stat-row">
+                <span>STR</span>
+                <div class="bar-container"><div id="strength-bar" class="bar-fill"></div></div>
+            </div>
+        </div>
+        <div class="time-display" id="clock">08:00</div>
+    </div>
+
+    <div id="message-area"></div>
+
+    <div id="start-screen">
+        <h1>PRISON<br>ESCAPE</h1>
+        <button onclick="startGame()">Commencer</button>
+        <div class="controls-info">
+            <span class="key">Z</span> <span class="key">Q</span> <span class="key">S</span> <span class="key">D</span> pour bouger<br>
+            <span class="key">SHIFT</span> pour courir (Attention aux gardes)<br>
+            Évitez la chaleur !
+        </div>
+    </div>
+</div>
+
+<script>
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+
+    // Game Constants
+    const TILE_SIZE = 16; // Internal resolution is 320x240 (20x15 tiles)
+    const COLS = 20;
+    const ROWS = 15;
+
+    // Assets
+    const bgImage = new Image();
+    bgImage.src = 'https://image.qwenlm.ai/public_source/6ed9875d-3750-4eff-9333-aedec1688e8a/140bef7d3-8cc3-417d-b3a8-066631fe48b6.png';
+
+    // Game State
+    let gameRunning = false;
+    let frameCount = 0;
+    let gameTime = 8 * 60; // Minutes from 8:00
+    const DAY_LENGTH = 1000; // Frames per day
+
+    // Inputs
+    const keys = {
+        w: false, a: false, s: false, d: false,
+        z: false, q: false, s: false, d: false, // French AZERTY support
+        Shift: false
+    };
+
+    // Map: 0=Floor, 1=Wall, 2=Bed, 3=Table, 4=Door
+    // Simple prison layout
+    const map = [
+        [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
+        [1,2,2,2,1,0,0,0,1,0,0,0,0,0,1,3,3,3,3,1],
+        [1,2,2,2,1,0,0,0,1,0,0,0,0,0,1,3,3,3,3,1],
+        [1,1,4,1,1,0,0,0,1,0,0,0,0,0,1,1,4,1,1,1],
+        [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+        [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+        [1,0,0,1,1,1,1,0,0,0,0,1,1,1,1,0,0,0,0,1],
+        [1,0,0,1,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,1],
+        [1,0,0,1,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,1],
+        [1,0,0,1,1,4,1,1,0,0,1,1,4,1,1,0,0,0,0,1],
+        [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+        [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+        [1,1,1,1,1,1,1,1,1,0,0,1,1,1,1,1,1,1,1,1],
+        [1,3,3,3,3,3,3,3,1,0,0,1,3,3,3,3,3,3,3,1],
+        [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1]
+    ];
+
+    class Entity {
+        constructor(x, y, color) {
+            this.x = x;
+            this.y = y;
+            this.w = 12;
+            this.h = 12;
+            this.color = color;
+            this.vx = 0;
+            this.vy = 0;
+            this.speed = 0.5;
+            this.dir = 1; // 1 right, -1 left
+        }
+
+        getRect() {
+            return { x: this.x, y: this.y, w: this.w, h: this.h };
+        }
+
+        checkCollision(newX, newY) {
+            // Check map boundaries
+            if (newX < 0 || newX + this.w > canvas.width || newY < 0 || newY + this.h > canvas.height) return true;
+
+            // Check tile collision
+            const points = [
+                {x: newX, y: newY},
+                {x: newX + this.w, y: newY},
+                {x: newX, y: newY + this.h},
+                {x: newX + this.w, y: newY + this.h}
+            ];
+
+            for (let p of points) {
+                const col = Math.floor(p.x / TILE_SIZE);
+                const row = Math.floor(p.y / TILE_SIZE);
+                if (map[row] && map[row][col] === 1) return true; // Wall
+            }
+            return false;
+        }
+
+        move(dx, dy) {
+            if (!this.checkCollision(this.x + dx, this.y)) this.x += dx;
+            if (!this.checkCollision(this.x, this.y + dy)) this.y += dy;
+
+            if (dx > 0) this.dir = 1;
+            if (dx < 0) this.dir = -1;
+        }
+    }
+
+    class Player extends Entity {
+        constructor(x, y) {
+            super(x, y, '#d35400'); // Orange jumpsuit
+            this.heat = 0;
+            this.energy = 100;
+            this.strength = 20;
+        }
+
+        update() {
+            let dx = 0;
+            let dy = 0;
+            let running = keys.Shift && this.energy > 0;
+            let currentSpeed = running ? this.speed * 2.5 : this.speed;
+
+            if (keys.w || keys.z) dy = -currentSpeed;
+            if (keys.s) dy = currentSpeed;
+            if (keys.a || keys.q) dx = -currentSpeed;
+            if (keys.d) dx = currentSpeed;
+
+            this.move(dx, dy);
+
+            // Stats logic
+            if (running) {
+                this.energy -= 0.2;
+                // Generate heat if running near guards (simplified: always generates slight heat if running)
+                this.heat += 0.05;
+            } else {
+                if (this.energy < 100) this.energy += 0.1;
+                if (this.heat > 0) this.heat -= 0.02;
+            }
+
+            // Clamp stats
+            this.heat = Math.max(0, Math.min(100, this.heat));
+            this.energy = Math.max(0, Math.min(100, this.energy));
+
+            updateHUD();
+        }
+
+        draw() {
+            // Shadow
+            ctx.fillStyle = 'rgba(0,0,0,0.3)';
+            ctx.fillRect(this.x + 2, this.y + this.h - 2, this.w - 4, 4);
+
+            // Body
+            ctx.fillStyle = this.color;
+            ctx.fillRect(this.x, this.y, this.w, this.h);
+
+            // Head
+            ctx.fillStyle = '#f1c40f'; // Skin
+            ctx.fillRect(this.x + 2, this.y - 4, 8, 6);
+
+            // Eyes (direction)
+            ctx.fillStyle = '#000';
+            if (this.dir === 1) {
+                ctx.fillRect(this.x + 6, this.y - 3, 2, 2);
+            } else {
+                ctx.fillRect(this.x + 4, this.y - 3, 2, 2);
+            }
+        }
+    }
+
+    class Guard extends Entity {
+        constructor(x, y) {
+            super(x, y, '#2980b9'); // Blue uniform
+            this.speed = 0.3;
+            this.state = 'patrol'; // patrol, chase
+            this.patrolPoints = [];
+            this.targetIndex = 0;
+            this.setupPatrol(x, y);
+        }
+
+        setupPatrol(x, y) {
+            // Simple patrol: move horizontally until wall, then reverse
+            this.startX = x;
+            this.range = 60;
+            this.dir = 1;
+        }
+
+        update(player) {
+            // Detection
+            const dist = Math.hypot(player.x - this.x, player.y - this.y);
+
+            if (dist < 60 && player.heat > 20) {
+                // Suspicious behavior detected
+                player.heat += 0.2;
+                showMessage("GARDE VOUS OBSERVE !");
+            }
+
+            if (dist < 40) {
+                // Too close!
+                player.heat += 0.5;
+            }
+
+            // Patrol Logic
+            if (this.x > this.startX + this.range) this.dir = -1;
+            if (this.x < this.startX - this.range) this.dir = 1;
+
+            this.move(this.speed * this.dir, 0);
+        }
+
+        draw() {
+            // Shadow
+            ctx.fillStyle = 'rgba(0,0,0,0.3)';
+            ctx.fillRect(this.x + 2, this.y + this.h - 2, this.w - 4, 4);
+
+            // Uniform
+            ctx.fillStyle = this.color;
+            ctx.fillRect(this.x, this.y, this.w, this.h);
+
+            // Hat
+            ctx.fillStyle = '#1a252f';
+            ctx.fillRect(this.x, this.y - 4, this.w, 4);
+
+            // Badge
+            ctx.fillStyle = '#f1c40f';
+            ctx.fillRect(this.x + 4, this.y + 4, 4, 4);
+        }
+    }
+
+    let player;
+    let guards = [];
+
+    function init() {
+        player = new Player(3 * TILE_SIZE, 3 * TILE_SIZE);
+        guards = [
+            new Guard(10 * TILE_SIZE, 5 * TILE_SIZE),
+            new Guard(10 * TILE_SIZE, 10 * TILE_SIZE),
+            new Guard(5 * TILE_SIZE, 12 * TILE_SIZE)
+        ];
+        gameRunning = true;
+        document.getElementById('start-screen').style.display = 'none';
+        loop();
+    }
+
+    function startGame() {
+        init();
+    }
+
+    function updateHUD() {
+        document.getElementById('heat-bar').style.width = player.heat + '%';
+        document.getElementById('energy-bar').style.width = player.energy + '%';
+        document.getElementById('strength-bar').style.width = player.strength + '%';
+
+        // Clock
+        let totalMinutes = gameTime;
+        let hours = Math.floor(totalMinutes / 60) % 24;
+        let mins = Math.floor(totalMinutes % 60);
+        document.getElementById('clock').innerText =
+            (hours < 10 ? '0'+hours : hours) + ':' + (mins < 10 ? '0'+mins : mins);
+    }
+
+    function showMessage(text) {
+        const area = document.getElementById('message-area');
+        const msg = document.createElement('div');
+        msg.className = 'msg';
+        msg.innerText = text;
+        area.appendChild(msg);
+        setTimeout(() => msg.remove(), 3000);
+    }
+
+    function drawMap() {
+        // Draw Background Pattern
+        ctx.fillStyle = '#555';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        // Draw Tiles
+        for (let r = 0; r < ROWS; r++) {
+            for (let c = 0; c < COLS; c++) {
+                const tile = map[r][c];
+                const x = c * TILE_SIZE;
+                const y = r * TILE_SIZE;
+
+                if (tile === 1) {
+                    // Wall
+                    ctx.fillStyle = '#7f8c8d';
+                    ctx.fillRect(x, y, TILE_SIZE, TILE_SIZE);
+                    // 3D effect top
+                    ctx.fillStyle = '#95a5a6';
+                    ctx.fillRect(x, y, TILE_SIZE, 4);
+                    // Border
+                    ctx.strokeStyle = '#2c3e50';
+                    ctx.strokeRect(x, y, TILE_SIZE, TILE_SIZE);
+                } else if (tile === 2) {
+                    // Bed
+                    ctx.fillStyle = '#ecf0f1';
+                    ctx.fillRect(x + 2, y + 4, 12, 8);
+                    ctx.fillStyle = '#3498db'; // Pillow
+                    ctx.fillRect(x + 2, y + 4, 4, 8);
+                } else if (tile === 3) {
+                    // Table/Workbench
+                    ctx.fillStyle = '#8e44ad';
+                    ctx.fillRect(x + 1, y + 1, 14, 14);
+                    ctx.fillStyle = '#9b59b6';
+                    ctx.fillRect(x + 3, y + 3, 10, 10);
+                } else if (tile === 4) {
+                    // Door
+                    ctx.fillStyle = '#27ae60';
+                    ctx.fillRect(x, y + 4, 4, 8);
+                    ctx.fillRect(x + 12, y + 4, 4, 8);
+                }
+            }
+        }
+    }
+
+    function loop() {
+        if (!gameRunning) return;
+
+        // Clear
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+        // Update Time
+        frameCount++;
+        if (frameCount % 60 === 0) {
+            gameTime++;
+            updateHUD();
+        }
+
+        // Draw World
+        drawMap();
+
+        // Update & Draw Entities
+        player.update();
+        player.draw();
+
+        guards.forEach(g => {
+            g.update(player);
+            g.draw();
+        });
+
+        // Check Game Over (Heat maxed)
+        if (player.heat >= 100) {
+            gameRunning = false;
+            alert("ARRESTÉ ! La chaleur était trop élevée.");
+            location.reload();
+        }
+
+        requestAnimationFrame(loop);
+    }
+
+    // Input Listeners
+    window.addEventListener('keydown', e => {
+        if (keys.hasOwnProperty(e.key) || keys.hasOwnProperty(e.code)) {
+            keys[e.key] = true;
+        }
+    });
+
+    window.addEventListener('keyup', e => {
+        if (keys.hasOwnProperty(e.key) || keys.hasOwnProperty(e.code)) {
+            keys[e.key] = false;
+        }
+    });
+
+</script>
+</body>
+</html>
+

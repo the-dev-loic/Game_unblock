@@ -1,0 +1,595 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Jeu de Mouvement Avancé - First Person</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #111;
+            color: white;
+            user-select: none;
+        }
+
+        #canvas-container {
+            width: 100vw;
+            height: 100vh;
+            display: block;
+        }
+
+        #ui-layer {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+
+        #crosshair {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 20px;
+            height: 20px;
+            transform: translate(-50%, -50%);
+            border: 2px solid rgba(255, 255, 255, 0.8);
+            border-radius: 50%;
+        }
+
+        #crosshair::after {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 4px;
+            height: 4px;
+            background: white;
+            transform: translate(-50%, -50%);
+            border-radius: 50%;
+        }
+
+        .hud-panel {
+            background: rgba(0, 0, 0, 0.6);
+            padding: 15px;
+            border-radius: 8px;
+            backdrop-filter: blur(4px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            max-width: 300px;
+        }
+
+        h1 {
+            font-size: 1.2rem;
+            margin: 0 0 10px 0;
+            color: #00d2ff;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .controls-list {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+            font-size: 0.9rem;
+            line-height: 1.6;
+        }
+
+        .controls-list li span {
+            color: #ffcc00;
+            font-weight: bold;
+            background: rgba(255, 255, 255, 0.1);
+            padding: 2px 6px;
+            border-radius: 4px;
+            margin-right: 5px;
+        }
+
+        #status-bar {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        .status-indicator {
+            padding: 5px 10px;
+            border-radius: 4px;
+            font-weight: bold;
+            font-size: 0.8rem;
+            text-transform: uppercase;
+            opacity: 0;
+            transition: opacity 0.2s;
+        }
+
+        .status-indicator.active {
+            opacity: 1;
+        }
+
+        .status-glide { background-color: #00d2ff; color: #000; }
+        .status-zipline { background-color: #ff0055; color: #fff; }
+        .status-wall { background-color: #ffcc00; color: #000; }
+
+        #blocker {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.8);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+            z-index: 10;
+            pointer-events: auto;
+            cursor: pointer;
+        }
+
+        #instructions {
+            text-align: center;
+            color: #fff;
+        }
+
+        #instructions h2 {
+            font-size: 3rem;
+            margin-bottom: 10px;
+            text-shadow: 0 0 10px #00d2ff;
+        }
+
+        #instructions p {
+            font-size: 1.2rem;
+            color: #aaa;
+        }
+    </style>
+</head>
+<body>
+
+<div id="blocker">
+    <div id="instructions">
+        <h2>MOUVEMENT PRO</h2>
+        <p>Cliquez pour jouer</p>
+        <p style="font-size: 0.9rem; margin-top: 20px;">(WASD pour bouger, ESPACE pour sauter)</p>
+    </div>
+</div>
+
+<div id="ui-layer">
+    <div class="hud-panel">
+        <h1>Contrôles</h1>
+        <ul class="controls-list">
+            <li><span>WASD</span> Se déplacer</li>
+            <li><span>ESPACE</span> Sauter / Double Saut</li>
+            <li><span>ESPACE (Mur)</span> Wall Jump</li>
+            <li><span>ESPACE (Air)</span> Super Glide</li>
+            <li><span>E</span> Zipline (Proche du câble)</li>
+        </ul>
+    </div>
+
+    <div id="crosshair"></div>
+
+    <div id="status-bar">
+        <div id="ind-glide" class="status-indicator status-glide">Super Glide</div>
+        <div id="ind-zipline" class="status-indicator status-zipline">Zipline Active</div>
+        <div id="ind-wall" class="status-indicator status-wall">Mur Détecté</div>
+    </div>
+</div>
+
+<div id="canvas-container"></div>
+
+<script type="importmap">
+    {
+        "imports": {
+            "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+            "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/",
+            "cannon-es": "https://unpkg.com/cannon-es@0.20.0/dist/cannon-es.js"
+        }
+    }
+</script>
+
+<script type="module">
+    import * as THREE from 'three';
+    import * as CANNON from 'cannon-es';
+
+    const CONFIG = {
+        playerSpeed: 10,
+        jumpForce: 7,
+        doubleJumpForce: 6,
+        wallJumpForce: 9,
+        glideGravityScale: 0.2,
+        ziplineSpeed: 15,
+        wallNormalThreshold: 0.5
+    };
+
+    let camera, scene, renderer;
+    let world, physicsBody;
+    let lastTime;
+    let moveForward = false, moveBackward = false, moveLeft = false, moveRight = false;
+    let canJump = false;
+    let jumpCount = 0;
+    // FIX 2: isGlide est maintenant activé par keydown Space quand en l'air
+    let isGlide = false;
+    let isOnZipline = false;
+
+    let canWallJump = false;
+    let wallNormal = new CANNON.Vec3();
+    // FIX 3: timer pour réinitialiser canWallJump si plus de contact
+    let wallContactTimer = 0;
+
+    const blocker = document.getElementById('blocker');
+    const indGlide = document.getElementById('ind-glide');
+    const indZipline = document.getElementById('ind-zipline');
+    const indWall = document.getElementById('ind-wall');
+
+    const ziplines = [];
+
+    // FIX 1: Euler yaw/pitch séparés pour éviter le gimbal lock
+    // On gère la rotation caméra manuellement avec yaw + pitch
+    let yaw = 0;
+    let pitch = 0;
+
+    init();
+    animate();
+
+    function init() {
+        const container = document.getElementById('canvas-container');
+        scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x101015);
+        scene.fog = new THREE.Fog(0x101015, 10, 60);
+
+        camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        // FIX 1: Définir l'ordre YXZ pour que la rotation soit correcte (yaw d'abord, puis pitch)
+        camera.rotation.order = 'YXZ';
+
+        renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.shadowMap.enabled = true;
+        container.appendChild(renderer.domElement);
+
+        const hemiLight = new THREE.HemisphereLight(0xffffff, 0x444444, 0.6);
+        hemiLight.position.set(0, 20, 0);
+        scene.add(hemiLight);
+
+        const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
+        dirLight.position.set(10, 20, 10);
+        dirLight.castShadow = true;
+        dirLight.shadow.camera.top = 30;
+        dirLight.shadow.camera.bottom = -30;
+        dirLight.shadow.camera.left = -30;
+        dirLight.shadow.camera.right = 30;
+        scene.add(dirLight);
+
+        world = new CANNON.World();
+        world.gravity.set(0, -20, 0);
+        world.broadphase = new CANNON.SAPBroadphase(world);
+        world.allowSleep = true;
+
+        const defaultMaterial = new CANNON.Material('default');
+        const playerMaterial = new CANNON.Material('player');
+
+        const playerContactMaterial = new CANNON.ContactMaterial(playerMaterial, defaultMaterial, {
+            friction: 0.0,
+            restitution: 0.0
+        });
+        world.addContactMaterial(playerContactMaterial);
+
+        const shape = new CANNON.Sphere(1);
+        physicsBody = new CANNON.Body({
+            mass: 5,
+            material: playerMaterial,
+            linearDamping: 0.9,
+            angularDamping: 1.0
+        });
+        physicsBody.addShape(shape);
+        physicsBody.position.set(0, 5, 0);
+        physicsBody.fixedRotation = true;
+        world.addBody(physicsBody);
+
+        physicsBody.addEventListener('collide', (e) => {
+            const contactNormal = new CANNON.Vec3();
+            e.contact.ni.negate(contactNormal);
+
+            const up = new CANNON.Vec3(0, 1, 0);
+            const dot = contactNormal.dot(up);
+
+            if (dot < CONFIG.wallNormalThreshold && dot > -CONFIG.wallNormalThreshold) {
+                // Contact avec un mur
+                canWallJump = true;
+                wallContactTimer = 0.15; // FIX 3: fenêtre de 150ms pour wall jump
+                wallNormal.copy(contactNormal);
+                indWall.classList.add('active');
+            } else if (dot > CONFIG.wallNormalThreshold) {
+                // Contact avec le sol
+                canJump = true;
+                jumpCount = 0;
+                isGlide = false;
+                indGlide.classList.remove('active');
+                indWall.classList.remove('active');
+                canWallJump = false;
+            }
+        });
+
+        createMap(defaultMaterial);
+
+        document.addEventListener('keydown', onKeyDown);
+        document.addEventListener('keyup', onKeyUp);
+        document.addEventListener('mousedown', () => {
+            blocker.style.display = 'none';
+            document.body.requestPointerLock();
+        });
+
+        document.addEventListener('pointerlockchange', () => {
+            if (document.pointerLockElement === document.body) {
+                blocker.style.display = 'none';
+            } else {
+                blocker.style.display = 'flex';
+            }
+        });
+
+        // FIX 1: Mouse look utilise maintenant yaw et pitch séparés
+        document.body.addEventListener('mousemove', (event) => {
+            if (document.pointerLockElement === document.body) {
+                yaw -= event.movementX * 0.002;
+                pitch -= event.movementY * 0.002;
+                pitch = Math.max(-Math.PI / 2, Math.min(Math.PI / 2, pitch));
+                // Appliquer la rotation : YXZ → yaw autour de Y, pitch autour de X
+                camera.rotation.set(pitch, yaw, 0, 'YXZ');
+            }
+        });
+
+        window.addEventListener('resize', onWindowResize);
+    }
+
+    function createMap(material) {
+        function createBox(x, y, z, w, h, d, color) {
+            const geo = new THREE.BoxGeometry(w, h, d);
+            const mat = new THREE.MeshStandardMaterial({ color });
+            const mesh = new THREE.Mesh(geo, mat);
+            mesh.position.set(x, y, z);
+            mesh.castShadow = true;
+            mesh.receiveShadow = true;
+            scene.add(mesh);
+
+            const shape = new CANNON.Box(new CANNON.Vec3(w/2, h/2, d/2));
+            const body = new CANNON.Body({ mass: 0, material });
+            body.addShape(shape);
+            body.position.set(x, y, z);
+            world.addBody(body);
+
+            return { mesh, body };
+        }
+
+        createBox(0, -1, 0, 100, 2, 100, 0x333333);
+        createBox(-10, 2, -10, 2, 10, 10, 0x8844ff);
+        createBox(10, 4, -10, 2, 10, 10, 0x4488ff);
+        createBox(0, 10, -20, 10, 2, 10, 0x44ff44);
+
+        const ziplineY = 15;
+        const ziplineLen = 40;
+
+        const cableGeo = new THREE.CylinderGeometry(0.1, 0.1, ziplineLen, 8);
+        cableGeo.rotateZ(Math.PI / 2);
+        const cableMat = new THREE.MeshBasicMaterial({ color: 0xff0055 });
+        const cableMesh = new THREE.Mesh(cableGeo, cableMat);
+        cableMesh.position.set(0, ziplineY, 10);
+        scene.add(cableMesh);
+
+        ziplines.push({
+            start: new THREE.Vector3(-ziplineLen/2, ziplineY, 10),
+            end: new THREE.Vector3(ziplineLen/2, ziplineY, 10),
+            active: false
+        });
+
+        for (let i = 0; i < 10; i++) {
+            const x = (Math.random() - 0.5) * 60;
+            const z = (Math.random() - 0.5) * 60;
+            if (Math.abs(x) > 5 || Math.abs(z) > 5) {
+                createBox(x, 1, z, 3, 3, 3, 0x555555);
+            }
+        }
+    }
+
+    function onKeyDown(event) {
+        switch (event.code) {
+            case 'ArrowUp':
+            case 'KeyW': moveForward = true; break;
+            case 'ArrowLeft':
+            case 'KeyA': moveLeft = true; break;
+            case 'ArrowDown':
+            case 'KeyS': moveBackward = true; break;
+            case 'ArrowRight':
+            case 'KeyD': moveRight = true; break;
+            case 'Space':
+                event.preventDefault();
+                handleJump();
+                break;
+            case 'KeyE':
+                toggleZipline();
+                break;
+        }
+    }
+
+    function onKeyUp(event) {
+        switch (event.code) {
+            case 'ArrowUp':
+            case 'KeyW': moveForward = false; break;
+            case 'ArrowLeft':
+            case 'KeyA': moveLeft = false; break;
+            case 'ArrowDown':
+            case 'KeyS': moveBackward = false; break;
+            case 'ArrowRight':
+            case 'KeyD': moveRight = false; break;
+            case 'Space':
+                // FIX 2: désactiver le glide au relâchement
+                isGlide = false;
+                indGlide.classList.remove('active');
+                break;
+        }
+    }
+
+    function handleJump() {
+        if (isOnZipline) return;
+
+        if (canJump) {
+            physicsBody.velocity.y = CONFIG.jumpForce;
+            canJump = false;
+            jumpCount = 1;
+        } else if (canWallJump) {
+            // Wall Jump en priorité sur double saut
+            physicsBody.velocity.y = CONFIG.wallJumpForce;
+            physicsBody.velocity.x = wallNormal.x * CONFIG.wallJumpForce;
+            physicsBody.velocity.z = wallNormal.z * CONFIG.wallJumpForce;
+            canWallJump = false;
+            wallContactTimer = 0;
+            indWall.classList.remove('active');
+            jumpCount = 1;
+        } else if (jumpCount === 1) {
+            // Double Jump
+            physicsBody.velocity.y = CONFIG.doubleJumpForce;
+            jumpCount = 2;
+            const forward = new THREE.Vector3(0, 0, -1);
+            forward.applyEuler(new THREE.Euler(0, yaw, 0, 'YXZ'));
+            forward.y = 0;
+            forward.normalize();
+            physicsBody.velocity.x += forward.x * 2;
+            physicsBody.velocity.z += forward.z * 2;
+        } else if (jumpCount >= 2) {
+            // FIX 2: activer le super glide quand on est déjà en l'air et qu'on appuie espace
+            isGlide = true;
+            indGlide.classList.add('active');
+        }
+    }
+
+    function toggleZipline() {
+        const playerPos = new THREE.Vector3(physicsBody.position.x, physicsBody.position.y, physicsBody.position.z);
+
+        for (let z of ziplines) {
+            const lineDir = new THREE.Vector3().subVectors(z.end, z.start).normalize();
+            const pointToStart = new THREE.Vector3().subVectors(z.start, playerPos);
+            const projection = -pointToStart.dot(lineDir);
+            const lineLength = z.start.distanceTo(z.end);
+
+            let closestPoint;
+            if (projection <= 0) closestPoint = z.start.clone();
+            else if (projection >= lineLength) closestPoint = z.end.clone();
+            else closestPoint = z.start.clone().addScaledVector(lineDir, projection);
+
+            const dist = playerPos.distanceTo(closestPoint);
+
+            if (dist < 3) {
+                isOnZipline = !isOnZipline;
+                indZipline.classList.toggle('active', isOnZipline);
+
+                if (isOnZipline) {
+                    const lookDir = new THREE.Vector3(0, 0, -1);
+                    lookDir.applyEuler(new THREE.Euler(0, yaw, 0, 'YXZ'));
+                    const ziplineDirection_local = lookDir.dot(lineDir) > 0 ? 1 : -1;
+                    physicsBody.userData = { ziplineDirection: ziplineDirection_local };
+
+                    physicsBody.position.x = closestPoint.x;
+                    physicsBody.position.y = closestPoint.y;
+                    physicsBody.position.z = closestPoint.z;
+                    physicsBody.velocity.set(0, 0, 0);
+                } else {
+                    physicsBody.velocity.y = 2;
+                }
+                break;
+            }
+        }
+    }
+
+    function updatePlayerMovement(dt) {
+        // FIX 3: décrémenter le timer wall jump
+        if (wallContactTimer > 0) {
+            wallContactTimer -= dt;
+            if (wallContactTimer <= 0) {
+                canWallJump = false;
+                indWall.classList.remove('active');
+            }
+        }
+
+        if (isOnZipline) {
+            const z = ziplines[0];
+            const dir = physicsBody.userData?.ziplineDirection ?? 1;
+            const lineDir = new THREE.Vector3().subVectors(z.end, z.start).normalize();
+            const speed = CONFIG.ziplineSpeed;
+
+            physicsBody.velocity.x = lineDir.x * speed * dir;
+            physicsBody.velocity.z = lineDir.z * speed * dir;
+            physicsBody.velocity.y = 0;
+
+            const playerPos = new THREE.Vector3(physicsBody.position.x, physicsBody.position.y, physicsBody.position.z);
+            if (dir === 1 && playerPos.distanceTo(z.end) < 1.5) {
+                isOnZipline = false;
+                physicsBody.velocity.y = 2;
+                indZipline.classList.remove('active');
+            }
+            if (dir === -1 && playerPos.distanceTo(z.start) < 1.5) {
+                isOnZipline = false;
+                physicsBody.velocity.y = 2;
+                indZipline.classList.remove('active');
+            }
+            return;
+        }
+
+        // FIX 1: utiliser yaw pour la direction du mouvement (pas camera.quaternion directement)
+        const inputVector = new THREE.Vector3(0, 0, 0);
+        if (moveForward)  inputVector.z -= 1;
+        if (moveBackward) inputVector.z += 1;
+        if (moveLeft)     inputVector.x -= 1;
+        if (moveRight)    inputVector.x += 1;
+
+        if (inputVector.length() > 0) {
+            inputVector.normalize();
+            // Appliquer uniquement la rotation yaw (horizontale) pour le déplacement
+            inputVector.applyEuler(new THREE.Euler(0, yaw, 0, 'YXZ'));
+
+            const speed = CONFIG.playerSpeed;
+            physicsBody.velocity.x = inputVector.x * speed;
+            physicsBody.velocity.z = inputVector.z * speed;
+        } else {
+            physicsBody.velocity.x *= 0.85;
+            physicsBody.velocity.z *= 0.85;
+        }
+
+        // FIX 2: Super Glide — contrecarrer la gravité si isGlide actif
+        if (isGlide && physicsBody.velocity.y < 0) {
+            physicsBody.velocity.y += 9.8 * (1 - CONFIG.glideGravityScale) * dt;
+            indGlide.classList.add('active');
+        }
+    }
+
+    function animate(time) {
+        requestAnimationFrame(animate);
+
+        const dt = lastTime ? (time - lastTime) / 1000 : 0;
+        lastTime = time;
+
+        if (dt > 0 && dt < 0.1) {
+            world.step(1 / 60, dt, 3);
+
+            // Sync camera position
+            camera.position.set(
+                physicsBody.position.x,
+                physicsBody.position.y + 0.5,
+                physicsBody.position.z
+            );
+
+            updatePlayerMovement(dt);
+        }
+
+        renderer.render(scene, camera);
+    }
+
+    function onWindowResize() {
+        camera.aspect = window.innerWidth / window.innerHeight;
+        camera.updateProjectionMatrix();
+        renderer.setSize(window.innerWidth, window.innerHeight);
+    }
+</script>
+</body>
+</html>
