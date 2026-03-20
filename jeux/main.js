@@ -40,8 +40,8 @@ const menuData = {
         },
 
         "roulette": {
-            "roulette 1": "Jouable/casino/roulette/roulette_1.html",
-            "roulette 2 ": "Jouable/casino/roulette/roulette_2.html"
+            "roulette 1": "Jouable/casino/roulette/roulette_1/roulette_1.html",
+            "roulette 2 ": "Jouable/casino/roulette/roulette_2/roulette_2.html"
         }
     },
     "chess": {
