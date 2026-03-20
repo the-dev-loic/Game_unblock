@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NeuroAim - Trainer Pro</title>
+    <link href="aim_trainer_4.css">
+    <style>
+
+    </style>
+</head>
+<body>
+<div id="cur"><div class="ring"></div><div class="dot"></div></div>
+<div id="hf"></div>
+
+<!-- ══ MENU ══ -->
+<div id="menu">
+    <h1>NeuroAim</h1>
+    <p class="sub">TRAINER PRO</p>
+    <div class="tabs">
+        <button class="tab on" onclick="showTab('classic')">CLASSIQUE</button>
+        <button class="tab apex-t" onclick="showTab('apex')">APEX LEGENDS</button>
+    </div>
+
+    <!-- Classic -->
+    <div id="classic-grid">
+        <div class="card classic"><h2>Flickshot</h2><p>Cibles statiques aléatoires. Vitesse et précision.</p><button class="btn" onclick="startClassic('flick')">Commencer</button></div>
+        <div class="card classic"><h2>Quickscope</h2><p>Cibles qui rétrécissent. Réflexes extrêmes.</p><button class="btn" onclick="startClassic('quick')">Commencer</button></div>
+        <div class="card classic"><h2>Tracking</h2><p>Cibles en mouvement. Maîtrisez le suivi.</p><button class="btn" onclick="startClassic('curve')">Commencer</button></div>
+    </div>
+
+    <!-- Apex -->
+    <div id="apex-panel">
+        <!-- Weapon selection -->
+        <div id="weapon-grid"></div>
+
+        <!-- Config row -->
+        <div id="config-row">
+            <!-- Optic -->
+            <div class="card" style="cursor:none;">
+                <div class="cfg-title">OPTIQUE</div>
+                <div class="cfg-opts" id="optic-opts">
+                    <button class="opt on" data-val="iron"  onclick="setCfg('optic',this)">IRON / 1x</button>
+                    <button class="opt"    data-val="1x"    onclick="setCfg('optic',this)">1x HOLO</button>
+                    <button class="opt"    data-val="1x2x"  onclick="setCfg('optic',this)">1x-2x</button>
+                    <button class="opt"    data-val="3x"    onclick="setCfg('optic',this)">3x ACOG</button>
+                    <button class="opt"    data-val="2x4x"  onclick="setCfg('optic',this)">2x-4x VARI.</button>
+                </div>
+            </div>
+            <!-- Distance -->
+            <div class="card" style="cursor:none;">
+                <div class="cfg-title">DISTANCE</div>
+                <div class="cfg-opts" id="dist-opts">
+                    <button class="opt on" data-val="10" onclick="setCfg('dist',this)">10m</button>
+                    <button class="opt" data-val="25" onclick="setCfg('dist',this)">25m</button>
+                    <button class="opt" data-val="50" onclick="setCfg('dist',this)">50m</button>
+                    <button class="opt" data-val="100" onclick="setCfg('dist',this)">100m</button>
+                    <button class="opt" data-val="200" onclick="setCfg('dist',this)">200m</button>
+                </div>
+            </div>
+            <!-- Shield -->
+            <div class="card" style="cursor:none;">
+                <div class="cfg-title">BOUCLIER ENNEMI</div>
+                <div class="cfg-opts" id="shield-opts">
+                    <button class="opt on" data-val="0"   onclick="setCfg('shield',this)">AUCUN</button>
+                    <button class="opt shield-white"  data-val="150" onclick="setCfg('shield',this)">BLANC 150</button>
+                    <button class="opt shield-blue"   data-val="175" onclick="setCfg('shield',this)">BLEU 175</button>
+                    <button class="opt shield-purple" data-val="200" onclick="setCfg('shield',this)">VIOLET 200</button>
+                    <button class="opt shield-red"    data-val="225" onclick="setCfg('shield',this)">ROUGE 225</button>
+                    <button class="opt shield-gold"   data-val="250" onclick="setCfg('shield',this)">OR 250</button>
+                </div>
+            </div>
+            <!-- Mag size -->
+            <div class="card" style="cursor:none;">
+                <div class="cfg-title">MAGASIN</div>
+                <div class="cfg-opts" id="mag-opts">
+                    <button class="opt on" data-val="base" onclick="setCfg('mag',this)">BASE</button>
+                    <button class="opt" data-val="white" onclick="setCfg('mag',this)">BLANC +2</button>
+                    <button class="opt" data-val="blue" onclick="setCfg('mag',this)">BLEU +4</button>
+                    <button class="opt" data-val="purple" onclick="setCfg('mag',this)">VIOLET +6</button>
+                    <button class="opt" data-val="gold" onclick="setCfg('mag',this)">OR +8</button>
+                </div>
+            </div>
+        </div>
+
+        <button class="start-btn" onclick="startApexSession()">▶ LANCER LA SESSION</button>
+    </div>
+</div>
+
+<!-- ══ GAME UI ══ -->
+<div id="game-ui">
+    <div class="hud-top">
+        <div class="sbox" id="sb-score"><span class="slbl">SCORE</span><span class="sval" id="hud-score">0</span></div>
+        <div class="sbox" id="sb-time"><span class="slbl">TEMPS</span><span class="sval" id="hud-time">60</span></div>
+        <div class="sbox" id="sb-acc"><span class="slbl">PRÉCISION</span><span class="sval" id="hud-acc">100%</span></div>
+        <button class="pause-btn" onclick="togglePause()">PAUSE [ESC]</button>
+    </div>
+
+    <!-- WASD keys display -->
+    <div id="wasd">
+        <div class="wasd-row"><div class="wkey" id="wk-w">W</div></div>
+        <div class="wasd-row"><div class="wkey" id="wk-a">A</div><div class="wkey" id="wk-s">S</div><div class="wkey" id="wk-d">D</div></div>
+    </div>
+
+    <!-- Apex HUD bottom right -->
+    <div id="apex-hud">
+        <div class="wpn-name" id="wpn-name">R-301</div>
+        <div class="fire-pill fp-auto" id="fire-pill">AUTO</div>
+        <div class="key-h" id="key-h"></div>
+        <div style="display:flex;gap:8px;align-items:baseline;">
+            <div class="ammo-big"><span id="ammo-cur">18</span><span> / <span id="ammo-max">18</span></span></div>
+        </div>
+        <div class="mag-row" id="mag-dots"></div>
+        <div id="reload-wrap">
+            <div class="rl-lbl">RECHARGEMENT...</div>
+            <div class="rl-bg"><div class="rl-fill" id="rl-bar" style="width:0%"></div></div>
+        </div>
+    </div>
+
+    <!-- HP / Shield bars centered bottom -->
+    <div id="bars">
+        <div class="bar-wrap" id="shield-wrap" style="display:none;">
+            <div class="bar-lbl"><span id="shield-lbl">BOUCLIER</span><span id="shield-val">0</span></div>
+            <div class="bar-bg"><div class="bar-fill" id="shield-fill" style="width:100%"></div></div>
+        </div>
+        <div class="bar-wrap">
+            <div class="bar-lbl"><span>HP</span><span id="hp-val">100</span></div>
+            <div class="bar-bg"><div class="bar-fill" id="hp-fill" style="width:100%"></div></div>
+        </div>
+    </div>
+</div>
+
+<!-- Optic overlay canvas -->
+<canvas id="opticCanvas" style="position:absolute;inset:0;z-index:6;pointer-events:none;display:none;"></canvas>
+
+<!-- Game canvas -->
+<canvas id="gameCanvas"></canvas>
+
+<!-- ══ PAUSE ══ -->
+<div id="pause">
+    <div class="p-card">
+        <h2>PAUSE</h2>
+        <div class="cg"><label>Sensibilité</label><input type="range" id="sens" min="0.5" max="3" step="0.1" value="1"></div>
+        <div class="pa">
+            <button class="btn" onclick="togglePause()">Reprendre</button>
+            <button class="btn danger" onclick="returnMenu()">Quitter</button>
+        </div>
+    </div>
+</div>
+
+<!-- ══ GAME OVER ══ -->
+<div id="gameover">
+    <h1 id="go-title">Session Terminée</h1>
+    <div class="score-big" id="go-score">0</div>
+    <div class="sg">
+        <div class="si"><h3>TIRS</h3><span id="go-shots">0</span></div>
+        <div class="si"><h3>RATÉS</h3><span id="go-miss" style="color:#f33">0</span></div>
+        <div class="si"><h3>PRÉCISION</h3><span id="go-acc">0%</span></div>
+        <div class="si"><h3 id="go-lbl4">KILLS</h3><span id="go-val4">0</span></div>
+    </div>
+    <button class="btn" onclick="returnMenu()">Menu Principal</button>
+</div>
+
+<script src="aim_trainer_4.js">
+
+</script>
+</body>
+</html>
