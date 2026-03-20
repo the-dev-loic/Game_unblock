@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SENTINEL – Map Editor</title>
+    <link href="map_editor.css" rel="stylesheet">
+    <style>
+
+    </style>
+</head>
+<body>
+
+<!-- TOP BAR -->
+<div id="topbar">
+    <h1>MAP EDITOR</h1>
+    <div class="tb-sep"></div>
+    <input id="map-name-input" type="text" value="Ma Map" placeholder="Nom de la map" maxlength="32"/>
+    <div class="tb-sep"></div>
+    <button class="tb-btn" onclick="newMap()">NOUVELLE</button>
+    <button class="tb-btn primary" onclick="saveMap()">💾 SAUVEGARDER</button>
+    <button class="tb-btn" onclick="loadMap()">📂 CHARGER</button>
+    <button class="tb-btn primary" onclick="exportToGame()">▶ JOUER</button>
+    <button class="tb-btn danger" onclick="clearMap()">🗑 VIDER</button>
+    <span id="status-msg">Prêt</span>
+</div>
+
+<!-- GRID SETTINGS BAR -->
+<div id="gridbar">
+    <div class="gset">
+        <label>GRILLE</label>
+        <input type="number" id="grid-size" value="40" min="20" max="200" step="10" onchange="updateGrid()"/>
+        <label>px</label>
+    </div>
+    <div class="gset">
+        <label>ZOOM</label>
+        <input type="range" id="zoom-range" min="0.3" max="3" step="0.05" value="1" oninput="setZoom(this.value)"/>
+        <span id="zoom-val">1.0×</span>
+    </div>
+    <div class="gset">
+        <label>TAILLE MAP</label>
+        <input type="number" id="map-w" value="20" min="5" max="60" onchange="updateMapSize()"/>
+        <label>×</label>
+        <input type="number" id="map-h" value="20" min="5" max="60" onchange="updateMapSize()"/>
+    </div>
+    <div class="gset">
+        <label>COUCHE</label>
+        <input type="number" id="layer-input" value="0" min="0" max="10" onchange="setActiveLayer(parseInt(this.value))"/>
+    </div>
+    <div id="view-btns">
+        <button class="vbtn active" id="vbtn-top" onclick="setView('top')">TOP 2D</button>
+        <button class="vbtn" id="vbtn-iso" onclick="setView('3d')">VUE 3D</button>
+        <button class="vbtn" onclick="toggleSnap()" id="snap-btn">SNAP ✓</button>
+        <button class="vbtn" onclick="toggleGrid()" id="tgrid-btn">GRILLE ✓</button>
+    </div>
+</div>
+
+<!-- MAIN -->
+<div id="main">
+
+    <!-- SIDEBAR: Object palette -->
+    <div id="sidebar">
+        <div id="sidebar-title">OBJETS</div>
+        <div id="obj-list">
+
+            <div class="obj-group-title">TERRAIN</div>
+            <div class="obj-item selected" data-type="floor" onclick="selectTool(this)">
+                <div class="obj-icon" style="background:#4a6030;">🌿</div>
+                <div><div class="obj-label">Sol herbe</div><div class="obj-sub">floor/grass</div></div>
+            </div>
+            <div class="obj-item" data-type="floor_dirt" onclick="selectTool(this)">
+                <div class="obj-icon" style="background:#6a4a20;">🟫</div>
+                <div><div class="obj-label">Sol terre</div><div class="obj-sub">floor/dirt</div></div>
+            </div>
+            <div class="obj-item" data-type="floor_metal" onclick="selectTool(this)">
+                <div class="obj-icon" style="background:#404858;">⬜</div>
+                <div><div class="obj-label">Sol métal</div><div class="obj-sub">floor/metal</div></div>
+            </div>
+
+            <div class="obj-group-title">STRUCTURES</div>
+            <div class="obj-item" data-type="wall" onclick="selectTool(this)">
+                <div class="obj-icon" style="background:#888070;">🧱</div>
+                <div><div class="obj-label">Mur béton</div><div class="obj-sub">wall/conc</div></div>
+            </div>
+            <div class="obj-item" data-type="wall_metal" onclick="selectTool(this)">
+                <div class="obj-icon" style="background:#506070;">🔲</div>
+                <div><div class="obj-label">Mur métal</div><div class="obj-sub">wall/metal</div></div>
+            </div>
+            <div class="obj-item" data-type="wall_wood" onclick="selectTool(this)">
+                <div class="obj-icon" style="background:#8a5a28;">🪵</div>
+                <div><div class="obj-label">Mur bois</div><div class="obj-sub">wall/wood</div></div>
+            </div>
+            <div class="obj-item" data-type="platform" onclick="selectTool(this)">
+                <div class="obj-icon" style="background:#506070;">🔳</div>
+                <div><div class="obj-label">Plateforme</div><div class="obj-sub">platform</div></div>
+            </div>
+            <div class="obj-item" data-type="ramp" onclick="selectTool(this)">
+                <div class="obj-icon" style="background:#707060;">📐</div>
+                <div><div class="obj-label">Rampe</div><div class="obj-sub">ramp</div></div>
+            </div>
+            <div class="obj-item" data-type="pillar" onclick="selectTool(this)">
+                <div class="obj-icon" style="background:#888070;">🏛</div>
+                <div><div class="obj-label">Pilier</div><div class="obj-sub">pillar</div></div>
+            </div>
+            <div class="obj-item" data-type="stairs" onclick="selectTool(this)">
+                <div class="obj-icon" style="background:#888070;">🪜</div>
+                <div><div class="obj-label">Escalier</div><div class="obj-sub">stairs</div></div>
+            </div>
+            <div class="obj-item" data-type="tower" onclick="selectTool(this)">
+                <div class="obj-icon" style="background:#888888;">🏢</div>
+                <div><div class="obj-label">Tour</div><div class="obj-sub">tower</div></div>
+            </div>
+
+            <div class="obj-group-title">CIBLES</div>
+            <div class="obj-item" data-type="target_static" onclick="selectTool(this)">
+                <div class="obj-icon" style="background:#aa1111;">🎯</div>
+                <div><div class="obj-label">Cible fixe</div><div class="obj-sub">target/static</div></div>
+            </div>
+            <div class="obj-item" data-type="target_moving" onclick="selectTool(this)">
+                <div class="obj-icon" style="background:#cc4400;">↔ 🎯</div>
+                <div><div class="obj-label">Cible mobile</div><div class="obj-sub">target/moving</div></div>
+            </div>
+            <div class="obj-item" data-type="target_popup" onclick="selectTool(this)">
+                <div class="obj-icon" style="background:#aa5500;">⬆ 🎯</div>
+                <div><div class="obj-label">Cible popup</div><div class="obj-sub">target/popup</div></div>
+            </div>
+            <div class="obj-item" data-type="target_armored" onclick="selectTool(this)">
+                <div class="obj-icon" style="background:#558800;">🛡 🎯</div>
+                <div><div class="obj-label">Cible blindée</div><div class="obj-sub">target/armored</div></div>
+            </div>
+
+            <div class="obj-group-title">SPAWN & DIVERS</div>
+            <div class="obj-item" data-type="spawn" onclick="selectTool(this)">
+                <div class="obj-icon" style="background:#204080;">👤</div>
+                <div><div class="obj-label">Spawn joueur</div><div class="obj-sub">spawn</div></div>
+            </div>
+            <div class="obj-item" data-type="tree" onclick="selectTool(this)">
+                <div class="obj-icon" style="background:#2a5020;">🌳</div>
+                <div><div class="obj-label">Arbre</div><div class="obj-sub">tree</div></div>
+            </div>
+            <div class="obj-item" data-type="boulder" onclick="selectTool(this)">
+                <div class="obj-icon" style="background:#606060;">🪨</div>
+                <div><div class="obj-label">Rocher</div><div class="obj-sub">boulder</div></div>
+            </div>
+            <div class="obj-item" data-type="cover" onclick="selectTool(this)">
+                <div class="obj-icon" style="background:#505050;">📦</div>
+                <div><div class="obj-label">Couverture</div><div class="obj-sub">cover</div></div>
+            </div>
+
+            <div class="obj-group-title">OUTILS</div>
+            <div class="obj-item" data-type="eraser" onclick="selectTool(this)">
+                <div class="obj-icon" style="background:#303030;">🗑</div>
+                <div><div class="obj-label">Gomme</div><div class="obj-sub">erase</div></div>
+            </div>
+            <div class="obj-item" data-type="select_tool" onclick="selectTool(this)">
+                <div class="obj-icon" style="background:#303050;">🖱</div>
+                <div><div class="obj-label">Sélection</div><div class="obj-sub">select</div></div>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- CANVAS -->
+    <div id="canvas-wrap">
+        <canvas id="grid-canvas"></canvas>
+        <canvas id="canvas3d" style="display:none;position:absolute;inset:0;width:100%;height:100%;"></canvas>
+        <div id="view3d-hint" style="display:none;position:absolute;bottom:48px;left:50%;transform:translateX(-50%);
+      font-family:'Share Tech Mono',monospace;font-size:.68rem;color:#556;
+      background:rgba(8,10,14,.8);border:1px solid var(--border);padding:3px 10px;pointer-events:none;">
+            Clic gauche: orbite · Molette: zoom · Clic droit: pan
+        </div>
+        <div id="zoom-ind">ZOOM 1.0×</div>
+        <div id="coords">X: 0  Y: 0</div>
+        <div id="layerbar">
+            <span style="font-family:'Share Tech Mono',monospace;font-size:.7rem;color:#555;margin-right:4px;">COUCHE:</span>
+            <button class="lbtn active" onclick="setActiveLayer(0)">0</button>
+            <button class="lbtn" onclick="setActiveLayer(1)">1</button>
+            <button class="lbtn" onclick="setActiveLayer(2)">2</button>
+            <button class="lbtn" onclick="setActiveLayer(3)">3</button>
+            <button class="lbtn" onclick="setActiveLayer(4)">4</button>
+        </div>
+    </div>
+
+    <!-- PROPERTIES PANEL -->
+    <div id="props">
+        <div id="props-title">PROPRIÉTÉS</div>
+        <div id="props-body">
+            <div id="sel-info">Aucune sélection<br><span style="font-size:.65rem;color:#444;font-family:'Share Tech Mono',monospace;">← Cliquez un objet placé<br>pour modifier ses propriétés</span></div>
+            <div class="prop-sep"></div>
+
+            <div class="prop-row">
+                <label>HAUTEUR Y (décalage sol)</label>
+                <input type="number" id="prop-height" value="0" step="0.5" min="-5" max="50" oninput="updateSelProp('height',this.value)"/>
+            </div>
+            <div class="prop-row">
+                <label>LARGEUR W (cellules)</label>
+                <input type="number" id="prop-w" value="1" step="0.5" min="0.5" max="20" oninput="updateSelProp('w',this.value)"/>
+            </div>
+            <div class="prop-row">
+                <label>PROFONDEUR D (cellules)</label>
+                <input type="number" id="prop-d" value="1" step="0.5" min="0.5" max="20" oninput="updateSelProp('d',this.value)"/>
+            </div>
+            <div class="prop-row">
+                <label>HAUTEUR BOX H (ex: mur=8)</label>
+                <input type="number" id="prop-bh" value="3" step="0.5" min="0.1" max="50" oninput="updateSelProp('bh',this.value)"/>
+            </div>
+            <div class="prop-sep"></div>
+            <div class="prop-row">
+                <label>ROTATION (°)</label>
+                <input type="number" id="prop-rot" value="0" step="45" min="0" max="315" oninput="updateSelProp('rot',this.value)"/>
+            </div>
+            <div class="prop-row">
+                <label>COULEUR</label>
+                <input type="color" id="prop-color" value="#888888" oninput="updateSelProp('color',this.value)" style="height:28px;padding:2px;"/>
+            </div>
+            <div class="prop-sep"></div>
+            <div class="prop-row" id="target-opts" style="display:none">
+                <label>AMP MOUVEMENT</label>
+                <input type="number" id="prop-amp" value="3" step="0.5" min="0" max="20" oninput="updateSelProp('amp',this.value)"/>
+            </div>
+            <div class="prop-row" id="target-spd-row" style="display:none">
+                <label>VITESSE</label>
+                <input type="number" id="prop-spd" value="0.8" step="0.1" min="0.1" max="5" oninput="updateSelProp('spd',this.value)"/>
+            </div>
+            <div class="prop-row" id="popup-opts" style="display:none">
+                <label>INTERVALLE POPUP</label>
+                <input type="number" id="prop-interval" value="2.5" step="0.5" min="0.5" max="10" oninput="updateSelProp('interval',this.value)"/>
+            </div>
+            <div class="prop-row">
+                <label>NOTE / NOM</label>
+                <input type="text" id="prop-note" value="" placeholder="..." oninput="updateSelProp('note',this.value)"/>
+            </div>
+            <button class="tb-btn danger" id="del-sel" onclick="deleteSelected()" style="display:none;width:100%;margin-top:6px;">🗑 SUPPRIMER</button>
+        </div>
+    </div>
+
+</div>
+
+<!-- MODAL pour import/export JSON -->
+<div id="modal-bg">
+    <div id="modal">
+        <h2 id="modal-title">EXPORT / IMPORT</h2>
+        <p id="modal-desc">Copiez ce JSON pour le sauvegarder, ou collez un JSON pour charger une map.</p>
+        <textarea id="modal-ta" spellcheck="false"></textarea>
+        <div class="modal-btns">
+            <button class="tb-btn" onclick="copyModalText()">COPIER</button>
+            <button class="tb-btn primary" id="modal-confirm" onclick="confirmModal()">OK</button>
+            <button class="tb-btn danger" onclick="closeModal()">ANNULER</button>
+        </div>
+    </div>
+</div>
+
+<div id="tooltip"></div>
+
+<script src="map_editor.js">
+
+</script>
+</body>
+</html>

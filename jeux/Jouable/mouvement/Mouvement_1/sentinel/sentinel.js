@@ -1,0 +1,815 @@
+import * as THREE from 'three';
+import * as CANNON from 'cannon-es';
+
+// ═══════════════════════════════════════════════════════════════
+//  CONFIG
+// ═══════════════════════════════════════════════════════════════
+const CFG = {
+    walkSpd:9, sprintSpd:14.5, crouchSpd:5,
+    jumpF:8.5, djF:6.5, wallJumpF:11,
+    // Slide: Shift alone while moving on ground
+    slideF:22, slideDur:0.6, slideCool:0.9,
+    gravity:-22,
+    bhopWin:0.14, bhopBoost:1.18,
+    climbSpd:5.5, climbReach:1.2, mantleHeight:2.6, wallRunDur:1.4, wallRunSpd:11,
+    scopeFOV:24, normalFOV:75, scopeSway:0.011, qsWin:0.26,
+    reloadT:2.4, maxAmmo:6,
+};
+
+// ═══════════════════════════════════════════════════════════════
+//  GLOBAL STATE
+// ═══════════════════════════════════════════════════════════════
+const keys={};
+let yaw=0,pitch=0;
+let canJump=false, jumpCt=0, landT=0;
+let isScoped=false, scopeT=0;
+let isSliding=false, slideTmr=0, slideCool=0;
+let isCrouch=false, isGlide=false;
+let wallNear=false, wallNorm=new CANNON.Vec3(), wallTmr=0;
+let isClimbing=false, climbTmr=0;
+let isWallRun=false, wallRunTmr=0;
+let isMantling=false, mantleTmr=0;
+let mantleTarget=new THREE.Vector3();
+let canMantle=false;
+let slideDir=new THREE.Vector3();
+let ammo=CFG.maxAmmo, isReload=false, reloadTmr=0;
+let shots=0,hits=0,score=0,kills=0,combo=1,comboTmr=0;
+let swX=0,swY=0;
+let gameRunning=false;
+// Slide trigger: Shift pressed while running on ground (not already sliding, not in air)
+let shiftJustPressed=false;
+let prevShift=false;
+let customMapData=null;
+
+// ═══════════════════════════════════════════════════════════════
+//  RENDERER
+// ═══════════════════════════════════════════════════════════════
+const canvas=document.getElementById('c');
+const renderer=new THREE.WebGLRenderer({canvas,antialias:true});
+renderer.setSize(innerWidth,innerHeight);
+renderer.shadowMap.enabled=true;
+renderer.shadowMap.type=THREE.PCFSoftShadowMap;
+renderer.setPixelRatio(Math.min(devicePixelRatio,2));
+renderer.toneMapping=THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure=1.1;
+
+const scene=new THREE.Scene();
+const camera=new THREE.PerspectiveCamera(CFG.normalFOV,innerWidth/innerHeight,.05,600);
+camera.rotation.order='YXZ';
+
+// ═══════════════════════════════════════════════════════════════
+//  PHYSICS
+// ═══════════════════════════════════════════════════════════════
+const world=new CANNON.World({gravity:new CANNON.Vec3(0,CFG.gravity,0)});
+world.broadphase=new CANNON.SAPBroadphase(world);
+const mDef=new CANNON.Material('def');
+const mPly=new CANNON.Material('ply');
+world.addContactMaterial(new CANNON.ContactMaterial(mPly,mDef,{friction:0,restitution:0}));
+
+const body=new CANNON.Body({mass:5,material:mPly,linearDamping:.88,angularDamping:1});
+body.addShape(new CANNON.Sphere(.8));
+body.position.set(0,8,0);
+body.fixedRotation=true;
+world.addBody(body);
+
+body.addEventListener('collide',e=>{
+    const n=new CANNON.Vec3(); e.contact.ni.negate(n);
+    const d=n.dot(new CANNON.Vec3(0,1,0));
+    if(d>.45){
+        const now=performance.now()/1000;
+        if(!canJump&&(now-landT)<CFG.bhopWin&&jumpCt>0){
+            body.velocity.x*=CFG.bhopBoost; body.velocity.z*=CFG.bhopBoost;
+        }
+        canJump=true; jumpCt=0; isGlide=false; isMantling=false;
+        isClimbing=false; isWallRun=false;
+        landT=performance.now()/1000;
+    } else if(Math.abs(d)<.45){
+        wallNear=true; wallNorm.copy(n); wallTmr=.2;
+    }
+});
+
+// ═══════════════════════════════════════════════════════════════
+//  LIGHTING
+// ═══════════════════════════════════════════════════════════════
+scene.background=new THREE.Color(0x87ceeb);
+scene.fog=new THREE.FogExp2(0xc9e8f8,.006);
+scene.add(new THREE.AmbientLight(0xfff5e8,1.1));
+const sun=new THREE.DirectionalLight(0xfff8e0,2.2);
+sun.position.set(60,100,40); sun.castShadow=true;
+sun.shadow.mapSize.set(4096,4096);
+sun.shadow.camera.left=sun.shadow.camera.bottom=-120;
+sun.shadow.camera.right=sun.shadow.camera.top=120;
+sun.shadow.camera.far=400; sun.shadow.bias=-.0003;
+scene.add(sun);
+scene.add(new THREE.DirectionalLight(0x9bb8d4,.5));
+scene.add(new THREE.HemisphereLight(0x87ceeb,0x8fa060,.4));
+const sunDisc=new THREE.Mesh(new THREE.CircleGeometry(8,32),new THREE.MeshBasicMaterial({color:0xfff8c0,side:THREE.DoubleSide}));
+sunDisc.position.set(300,500,200); sunDisc.lookAt(0,0,0); scene.add(sunDisc);
+
+// ═══════════════════════════════════════════════════════════════
+//  MATERIALS
+// ═══════════════════════════════════════════════════════════════
+const MATS={
+    grass: new THREE.MeshStandardMaterial({color:0x7db550,roughness:.95}),
+    dirt:  new THREE.MeshStandardMaterial({color:0x8d6440,roughness:.9}),
+    conc:  new THREE.MeshStandardMaterial({color:0xb0a898,roughness:.85}),
+    metal: new THREE.MeshStandardMaterial({color:0x7a8090,roughness:.4,metalness:.7}),
+    wood:  new THREE.MeshStandardMaterial({color:0xa0784a,roughness:.9}),
+    red:   new THREE.MeshStandardMaterial({color:0xdd2222,roughness:.6}),
+};
+
+// ═══════════════════════════════════════════════════════════════
+//  MAP HELPERS
+// ═══════════════════════════════════════════════════════════════
+const physBodies=[];
+function addBox(x,y,z,w,h,d,mat,noPhys=false){
+    const m=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),mat);
+    m.position.set(x,y,z); m.castShadow=true; m.receiveShadow=true; scene.add(m);
+    if(!noPhys){
+        const b=new CANNON.Body({mass:0,material:mDef});
+        b.addShape(new CANNON.Box(new CANNON.Vec3(w/2,h/2,d/2)));
+        b.position.set(x,y,z); world.addBody(b); physBodies.push(b);
+    }
+    return m;
+}
+function addCyl(x,y,z,r,h,mat){
+    const m=new THREE.Mesh(new THREE.CylinderGeometry(r,r,h,12),mat);
+    m.position.set(x,y,z); m.castShadow=true; m.receiveShadow=true; scene.add(m);
+    const b=new CANNON.Body({mass:0,material:mDef});
+    b.addShape(new CANNON.Cylinder(r,r,h,8));
+    b.position.set(x,y,z); world.addBody(b); physBodies.push(b);
+}
+function addRamp(x,y,z,w,h,d,rx,mat){
+    const m=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),mat);
+    m.position.set(x,y,z); m.rotation.x=rx; m.castShadow=true; m.receiveShadow=true; scene.add(m);
+    const b=new CANNON.Body({mass:0,material:mDef});
+    b.addShape(new CANNON.Box(new CANNON.Vec3(w/2,h/2,d/2)));
+    b.position.set(x,y,z); b.quaternion.setFromEuler(rx,0,0); world.addBody(b); physBodies.push(b);
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  TARGETS
+// ═══════════════════════════════════════════════════════════════
+let targets=[];
+class Target{
+    constructor(x,y,z,type='static',opts={}){
+        this.type=type; this.alive=true;
+        this.hp=type==='target_armored'?2:1;
+        this.pts=({target_static:100,target_moving:160,target_popup:220,target_armored:280,high:350})[type]||100;
+        const h=opts.small?.65:1.1, w=opts.small?.45:.75;
+        this.mesh=new THREE.Mesh(new THREE.BoxGeometry(w,h,.15),MATS.red.clone());
+        this.mesh.position.set(x,y,z); this.mesh.castShadow=true; scene.add(this.mesh);
+        this.head=new THREE.Mesh(new THREE.SphereGeometry(w*.38,8,8),
+            new THREE.MeshStandardMaterial({color:0xff8888,roughness:.5}));
+        this.head.position.set(x,y+h*.65,z); scene.add(this.head);
+        const pole=new THREE.Mesh(new THREE.CylinderGeometry(.05,.05,.8,6),MATS.metal);
+        pole.position.set(x,y-h*.5-.4,z); scene.add(pole);
+        this.origin=new THREE.Vector3(x,y,z);
+        this.amp=opts.amp||3; this.spd=opts.spd||.8; this.phase=opts.phase||0;
+        this.popState='up'; this.popTmr=0;
+        this.popInterval=opts.interval||2.8; this.popHide=opts.hide||1.1;
+        if(type==='target_armored'){
+            this.plate=new THREE.Mesh(new THREE.BoxGeometry(w+.1,h*.5,.08),MATS.metal.clone());
+            this.plate.position.set(x,y-h*.1,z-.12); scene.add(this.plate);
+        }
+        targets.push(this);
+    }
+    update(dt,t){
+        if(!this.alive)return;
+        if(this.type==='target_moving'){
+            const nx=this.origin.x+Math.sin(t*this.spd+this.phase)*this.amp;
+            this.mesh.position.x=nx; this.head.position.x=nx;
+            if(this.plate)this.plate.position.x=nx;
+        }
+        if(this.type==='target_popup'){
+            this.popTmr+=dt;
+            if(this.popState==='up'&&this.popTmr>this.popInterval){
+                this.popState='down'; this.popTmr=0; this.mesh.visible=this.head.visible=false;
+            }else if(this.popState==='down'&&this.popTmr>this.popHide){
+                this.popState='up'; this.popTmr=0; this.mesh.visible=this.head.visible=true;
+            }
+        }
+    }
+    hit(head){
+        this.hp--;
+        if(this.hp<=0){
+            this.alive=false; this.mesh.material.color.set(0x333); this.head.visible=false;
+            if(this.plate)this.plate.visible=false;
+            setTimeout(()=>this.respawn(),3500+Math.random()*2000); return true;
+        }
+        if(this.plate)this.plate.visible=false;
+        this.mesh.material.color.set(0xff6600); return false;
+    }
+    respawn(){
+        this.alive=true; this.hp=this.type==='target_armored'?2:1;
+        this.mesh.material.color.set(0xdd2222); this.head.visible=true;
+        if(this.plate){this.plate.material=MATS.metal.clone();this.plate.visible=true;}
+        this.mesh.visible=this.head.visible=true;
+    }
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  DEFAULT MAP
+// ═══════════════════════════════════════════════════════════════
+function buildDefaultMap(){
+    const CELL=4; // 1 editor cell = 4 world units
+
+    addBox(0,-2,0, 200,4,200, MATS.grass);
+    addBox(0,.02,0, 6,.05,200, MATS.dirt,true);
+    addBox(0,.02,0, 200,.05,6, MATS.dirt,true);
+
+    // Bunker
+    addBox(0,1,-30, 30,3,1, MATS.conc);
+    addBox(0,1,-55, 30,3,1, MATS.conc);
+    addBox(-15,1,-42, 1,3,26, MATS.conc);
+    addBox(15,1,-42, 1,3,26, MATS.conc);
+    addBox(-7,1,-40, 1,4,10, MATS.conc);
+    addBox(7,1,-40, 1,4,10, MATS.conc);
+    addBox(-5,.8,-48, 3,2,3, MATS.conc);
+    addBox(5,.8,-48, 3,2,3, MATS.conc);
+    addBox(0,.8,-36, 4,1.6,4, MATS.conc);
+
+    // Parkour
+    addCyl(-22,6,10, 1.2,13, MATS.conc);
+    addCyl(-22,6,25, 1.2,13, MATS.conc);
+    addCyl(22,6,10, 1.2,13, MATS.conc);
+    addCyl(22,6,25, 1.2,13, MATS.conc);
+    addBox(-22,12,17, 3,.4,16, MATS.metal);
+    addBox(22,12,17, 3,.4,16, MATS.metal);
+    addBox(0,14,17, 44,.4,3, MATS.metal);
+    addRamp(-22,3,4, 3,.3,12, -.38, MATS.conc);
+    addRamp(22,3,4, 3,.3,12, -.38, MATS.conc);
+
+    for(let i=0;i<8;i++) addBox(-35,i*1.2+.6,-10+i*3, 6,1.2,4, MATS.conc);
+    addBox(-35,10,14, 8,.4,8, MATS.conc);
+    for(let i=0;i<8;i++) addBox(35,i*1.2+.6,-10+i*3, 6,1.2,4, MATS.conc);
+    addBox(35,10,14, 8,.4,8, MATS.conc);
+
+    const pCubes=[[-10,1.5,5,4,3,4],[-4,3,12,3,6,3],[4,4.5,18,3,9,3],[10,6,10,3,12,3],
+        [-8,4,20,4,8,4],[0,7,28,5,14,5],[16,2,30,4,4,5],[-16,3,35,4,6,4],
+        [8,10,35,4,1,4],[-8,10,35,4,1,4],[0,13,35,8,1,5]];
+    for(const [x,y,z,w,h,d] of pCubes) addBox(x,y,z,w,h,d,MATS.conc);
+
+    addBox(-30,8,15, 5,.4,5, MATS.metal);
+    addBox(-30,14,15, 5,.4,5, MATS.metal);
+    addBox(-20,18,15, 5,.4,5, MATS.metal);
+    addBox(0,20,15, 6,.4,6, MATS.metal);
+    addBox(-30,10,8, 6,20,1, MATS.conc);
+    addBox(30,10,8, 6,20,1, MATS.conc);
+
+    // Tower
+    addBox(0,10,0, 5,20,5, MATS.conc);
+    addBox(0,21,0, 7,.4,7, MATS.conc);
+    addBox(3.5,6,-1, 2,.4,2, MATS.metal);
+    addBox(-3.5,10,1, 2,.4,2, MATS.metal);
+    addBox(1,15,3.5, 2,.4,2, MATS.metal);
+    addRamp(5,1.5,0, 4,.3,8, -.3, MATS.conc);
+
+    // Trees
+    for(const[x,z] of [[-15,55],[15,55],[-25,65],[25,65],[0,70]]){
+        addCyl(x,3,z, .5,7, new THREE.MeshStandardMaterial({color:0x4a7030,roughness:.9}));
+        const f=new THREE.Mesh(new THREE.SphereGeometry(2.5,8,6),new THREE.MeshStandardMaterial({color:0x4a8030,roughness:.95}));
+        f.position.set(x,7.5,z); scene.add(f);
+    }
+
+    // Targets
+    new Target(-8,1.8,-54,'target_static');
+    new Target(0,1.8,-54,'target_static');
+    new Target(8,1.8,-54,'target_static');
+    new Target(-8,1.8,-34,'target_popup',{interval:2,hide:.9});
+    new Target(8,1.8,-34,'target_popup',{interval:2.5,hide:1});
+    new Target(0,1.8,-42,'target_moving',{amp:5,spd:1.1});
+    new Target(-4,1.8,-44,'target_armored');
+    new Target(4,1.8,-44,'target_armored');
+    new Target(-10,4,5,'target_static',{small:true});
+    new Target(10,5,10,'target_static',{small:true});
+    new Target(0,14,17,'target_static');
+    new Target(-22,13,17,'target_static');
+    new Target(22,13,17,'target_static');
+    new Target(-35,11,14,'target_static');
+    new Target(35,11,14,'target_static');
+    new Target(0,22,0,'target_static');
+    new Target(-10,1.5,20,'target_moving',{amp:6,spd:.9});
+    new Target(10,1.5,25,'target_moving',{amp:5,spd:1.3,phase:1.2});
+    new Target(0,1.5,55,'target_moving',{amp:8,spd:.6});
+    new Target(-20,1.5,50,'target_static');
+    new Target(20,1.5,50,'target_static');
+
+    body.position.set(0,8,10);
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  CLEAR SCENE (appelé avant chaque chargement de map)
+// ═══════════════════════════════════════════════════════════════
+function clearScene(){
+    // Supprimer tous les meshes de la scène sauf caméra, lumières, soleil
+    const toRemove=[];
+    scene.traverse(obj=>{
+        if(obj===scene||obj===camera||obj===sunDisc) return;
+        if(obj.isLight) return;
+        if(obj.isMesh||obj.isGroup) toRemove.push(obj);
+    });
+    toRemove.forEach(o=>{ if(o.parent) o.parent.remove(o); });
+
+    // Supprimer tous les corps physiques sauf le joueur
+    for(const b of physBodies) world.removeBody(b);
+    physBodies.length=0;
+
+    // Vider les targets
+    targets=[];
+
+    // Reset stats
+    shots=0; hits=0; score=0; kills=0; combo=1; comboTmr=0;
+    ammo=CFG.maxAmmo; isReload=false;
+    document.getElementById('s-score').textContent='0';
+    document.getElementById('s-kills').textContent='0';
+    document.getElementById('s-acc').textContent='--%';
+    document.getElementById('s-combo').textContent='×1';
+    document.getElementById('a-cur').textContent=ammo;
+    document.getElementById('rfill').style.width='0%';
+    document.getElementById('rtxt').style.display='none';
+
+    // Reset joueur
+    body.velocity.set(0,0,0);
+    canJump=false; jumpCt=0; isSliding=false; isGlide=false;
+    isClimbing=false; isWallRun=false; isMantling=false;
+
+    // Re-ajouter la caméra+gun à la scène (elle a pu être retirée)
+    if(!scene.children.includes(camera)) scene.add(camera);
+}
+
+
+const TYPE_TO_MAT={
+    floor:MATS.grass, floor_dirt:MATS.dirt, floor_metal:MATS.metal,
+    wall:MATS.conc, wall_metal:MATS.metal, wall_wood:MATS.wood,
+    platform:MATS.metal, ramp:MATS.conc, pillar:MATS.conc,
+    stairs:MATS.conc, tower:MATS.conc,
+    tree:new THREE.MeshStandardMaterial({color:0x4a7030}),
+    boulder:MATS.conc, cover:MATS.conc,
+    spawn:MATS.metal,
+};
+
+function buildCustomMap(data){
+    const CELL=4;
+    // Ground
+    addBox(0,-2,0, data.mapW*CELL+20, 4, data.mapH*CELL+20, MATS.grass);
+
+    let spawnSet=false;
+    for(const obj of data.objects){
+        const wx=(obj.gx+.5)*CELL - (data.mapW*CELL/2);
+        const wz=(obj.gy+.5)*CELL - (data.mapH*CELL/2);
+        const wy=(obj.height||0) + (obj.bh||1)/2;
+        const mat=TYPE_TO_MAT[obj.type]||MATS.conc;
+        const w=(obj.w||1)*CELL, d=(obj.d||1)*CELL, bh=obj.bh||3;
+
+        if(obj.type==='spawn'){
+            body.position.set(wx, (obj.height||0)+3, wz);
+            spawnSet=true;
+        } else if(obj.type.startsWith('target_')){
+            new Target(wx, (obj.height||0)+1.5, wz, obj.type,
+                {amp:obj.amp||3, spd:obj.spd||.8, interval:obj.interval||2.5, phase:Math.random()*Math.PI*2});
+        } else if(obj.type==='tree'){
+            addCyl(wx,(obj.height||0)+3,wz, .5,7, mat);
+            const f=new THREE.Mesh(new THREE.SphereGeometry(2.5,8,6),
+                new THREE.MeshStandardMaterial({color:0x4a8030,roughness:.95}));
+            f.position.set(wx,(obj.height||0)+7.5,wz); scene.add(f);
+        } else if(obj.type==='boulder'){
+            const r=1.2;
+            const b=new THREE.Mesh(new THREE.SphereGeometry(r,7,6),MATS.conc);
+            b.position.set(wx,r*.5+obj.height||0,wz); b.castShadow=true; scene.add(b);
+            const pb=new CANNON.Body({mass:0,material:mDef});
+            pb.addShape(new CANNON.Sphere(r)); pb.position.copy(b.position); world.addBody(pb);
+        } else if(obj.type==='pillar'){
+            addCyl(wx, (obj.height||0)+bh/2, wz, Math.min(w,d)*.4, bh, mat);
+        } else if(obj.type==='ramp'){
+            addRamp(wx, wy, wz, w, .4, d, -.35, mat);
+        } else {
+            // floors, walls, platforms, stairs, tower, cover
+            const customMat = new THREE.MeshStandardMaterial({
+                color: new THREE.Color(obj.color || '#888888'), roughness:.8
+            });
+            addBox(wx, wy, wz, w, bh, d, customMat);
+        }
+    }
+    if(!spawnSet) body.position.set(0,8,0);
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  GUN
+// ═══════════════════════════════════════════════════════════════
+const gun=new THREE.Group();
+const brl=new THREE.Mesh(new THREE.CylinderGeometry(.035,.035,1.1,8),MATS.metal);
+brl.rotation.z=Math.PI/2; brl.position.set(.33,0,.1); gun.add(brl);
+const bdy=new THREE.Mesh(new THREE.BoxGeometry(.75,.11,.11),MATS.metal);
+bdy.position.set(0,-.02,.11); gun.add(bdy);
+const stk=new THREE.Mesh(new THREE.BoxGeometry(.38,.09,.13),MATS.conc);
+stk.position.set(-.33,0,.12); gun.add(stk);
+const scp=new THREE.Mesh(new THREE.CylinderGeometry(.032,.032,.42,8),MATS.metal);
+scp.rotation.z=Math.PI/2; scp.position.set(.04,.1,.11); gun.add(scp);
+const rail=new THREE.Mesh(new THREE.BoxGeometry(.48,.04,.04),
+    new THREE.MeshStandardMaterial({color:0xc8a84b,roughness:.3,metalness:.8}));
+rail.position.set(.04,.085,.11); gun.add(rail);
+gun.position.set(.27,-.21,-.48);
+camera.add(gun);
+scene.add(camera);
+
+// ═══════════════════════════════════════════════════════════════
+//  PARTICLES
+// ═══════════════════════════════════════════════════════════════
+const parts=[];
+function spawnParts(pos,hs){
+    for(let i=0;i<10;i++){
+        const g=new THREE.Mesh(new THREE.SphereGeometry(.045,4,4),
+            new THREE.MeshBasicMaterial({color:hs?0xffaa00:0xff3333,transparent:true}));
+        g.position.copy(pos);
+        const v=new THREE.Vector3((Math.random()-.5)*9,Math.random()*7,(Math.random()-.5)*9);
+        scene.add(g); parts.push({mesh:g,vel:v,life:.5});
+    }
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  SHOOT
+// ═══════════════════════════════════════════════════════════════
+const rc=new THREE.Raycaster();
+function fire(){
+    if(isReload||ammo<=0){if(ammo<=0)doReload();return;}
+    ammo--; document.getElementById('a-cur').textContent=ammo; shots++;
+    let spread=isScoped?(scopeT<CFG.qsWin?.014:.001):.09;
+    const dir=new THREE.Vector3((Math.random()-.5)*spread,(Math.random()-.5)*spread,-1).normalize();
+    dir.applyEuler(camera.rotation);
+    rc.set(camera.position.clone(),dir);
+    const meshes=targets.flatMap(t=>[t.mesh,t.head].filter(Boolean));
+    const res=rc.intersectObjects(meshes);
+    if(res.length>0){
+        hits++;
+        const tgt=targets.find(t=>t.mesh===res[0].object||t.head===res[0].object);
+        if(tgt&&tgt.alive&&(tgt.type!=='target_popup'||tgt.popState==='up')){
+            const hs=tgt.head===res[0].object;
+            const kill=tgt.hit(hs);
+            spawnParts(res[0].point,hs);
+            document.getElementById('hm').classList.add('on');
+            setTimeout(()=>document.getElementById('hm').classList.remove('on'),110);
+            if(kill){
+                kills++; document.getElementById('s-kills').textContent=kills; comboTmr=2.5;
+                let pts=tgt.pts*combo;
+                if(hs)pts=Math.floor(pts*1.5);
+                if(!isScoped)pts=Math.floor(pts*2.2);
+                else if(scopeT<CFG.qsWin)pts=Math.floor(pts*1.3);
+                score+=pts; document.getElementById('s-score').textContent=score;
+                combo=Math.min(combo+1,8);
+                document.getElementById('s-combo').textContent='×'+combo;
+                if(combo>1)document.getElementById('s-combo').style.color='#ff6600';
+                const tag=!isScoped?'NOSCOPE':scopeT<CFG.qsWin?'QUICKSCOPE':hs?'HEADSHOT':'KILL';
+                const cls=!isScoped?'ns':scopeT<CFG.qsWin||hs?'qs':'';
+                addKF(tag+' +'+pts, cls);
+                showPopup(pts);
+            }
+        }
+    }
+    document.getElementById('s-acc').textContent=shots>0?Math.round(hits/shots*100)+'%':'--%';
+    if(ammo<=0)doReload();
+}
+
+function doReload(){
+    if(isReload||ammo===CFG.maxAmmo)return;
+    isReload=true; reloadTmr=0;
+    document.getElementById('rtxt').style.display='block';
+    document.getElementById('rfill').style.width='0%';
+    isScoped=false; document.getElementById('scope').classList.remove('on');
+    camera.fov=CFG.normalFOV; camera.updateProjectionMatrix(); gun.visible=true;
+}
+
+function addKF(msg,cls=''){
+    const d=document.createElement('div'); d.className='ke '+cls; d.textContent=msg;
+    document.getElementById('kf').prepend(d); setTimeout(()=>d.remove(),3500);
+}
+function showPopup(pts){
+    const d=document.createElement('div'); d.className='sp';
+    d.style.left=(innerWidth/2+35)+'px'; d.style.top=(innerHeight/2-25)+'px';
+    d.style.color=pts>200?'#ffaa00':'#fff'; d.textContent='+'+pts;
+    document.getElementById('hud').appendChild(d); setTimeout(()=>d.remove(),700);
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  CLIMB DETECTION
+// ═══════════════════════════════════════════════════════════════
+const mantleRC=new THREE.Raycaster(), climbRC=new THREE.Raycaster();
+function checkClimb(){
+    const fwd=new THREE.Vector3(0,0,-1).applyEuler(new THREE.Euler(0,yaw,0,'YXZ'));
+    climbRC.set(new THREE.Vector3(body.position.x,body.position.y,body.position.z),fwd);
+    const all=scene.children.filter(o=>o.isMesh);
+    const h2=climbRC.intersectObjects(all,true);
+    if(h2.length>0&&h2[0].distance<CFG.climbReach+.5){
+        const n=h2[0].face.normal.clone().applyQuaternion(h2[0].object.quaternion);
+        if(Math.abs(n.y)<.3){
+            wallNorm.set(-n.x,-n.y,-n.z); wallNear=true; wallTmr=.25;
+            const hitPt=h2[0].point.clone();
+            const abv=hitPt.clone().add(new THREE.Vector3(0,CFG.mantleHeight+1,0));
+            mantleRC.set(abv,new THREE.Vector3(0,-1,0));
+            const mh=mantleRC.intersectObjects(all,true);
+            if(mh.length>0){
+                const lY=mh[0].point.y, diff=lY-(body.position.y-.8);
+                if(diff>.3&&diff<CFG.mantleHeight+.5){
+                    canMantle=true;
+                    mantleTarget.set(hitPt.x+fwd.x*.5,lY+1.2,hitPt.z+fwd.z*.5);
+                } else canMantle=false;
+            }
+        } else canMantle=false;
+    } else canMantle=false;
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  INPUT
+// ═══════════════════════════════════════════════════════════════
+document.addEventListener('keydown',e=>{
+    if(!gameRunning)return;
+    const wasDown=keys[e.code];
+    keys[e.code]=true;
+    if(!wasDown){
+        if(e.code==='ShiftLeft'||e.code==='ShiftRight') shiftJustPressed=true;
+    }
+    if(e.code==='Space'){ handleJump(); e.preventDefault(); }
+    if(e.code==='KeyR'&&!isReload&&ammo<CFG.maxAmmo) doReload();
+    if(e.code==='KeyF') tryMantle();
+    if(e.code==='Escape'){ pauseGame(); }
+    e.preventDefault();
+});
+document.addEventListener('keyup',e=>{ keys[e.code]=false; });
+document.addEventListener('mousemove',e=>{
+    if(!gameRunning||!document.pointerLockElement)return;
+    const s=isScoped?.0009:.002;
+    yaw-=e.movementX*s; pitch-=e.movementY*s;
+    pitch=Math.max(-1.4,Math.min(1.4,pitch));
+    camera.rotation.set(pitch,yaw,0,'YXZ');
+});
+document.addEventListener('mousedown',e=>{
+    if(!gameRunning||!document.pointerLockElement)return;
+    if(e.button===2){
+        isScoped=true; scopeT=0;
+        document.getElementById('scope').classList.add('on');
+        camera.fov=CFG.scopeFOV; camera.updateProjectionMatrix(); gun.visible=false;
+    }
+    if(e.button===0) fire();
+});
+document.addEventListener('mouseup',e=>{
+    if(e.button===2){
+        isScoped=false;
+        document.getElementById('scope').classList.remove('on');
+        camera.fov=CFG.normalFOV; camera.updateProjectionMatrix(); gun.visible=true;
+    }
+});
+document.addEventListener('contextmenu',e=>e.preventDefault());
+document.addEventListener('pointerlockchange',()=>{
+    if(!document.pointerLockElement && gameRunning) pauseGame();
+});
+
+function handleJump(){
+    if(isSliding){isSliding=false;slideTmr=0;return;}
+    if(isClimbing){
+        isClimbing=false; body.velocity.y=CFG.jumpF;
+        const wn=new THREE.Vector3(wallNorm.x,0,wallNorm.z).normalize();
+        body.velocity.x=wn.x*CFG.wallJumpF*.7; body.velocity.z=wn.z*CFG.wallJumpF*.7;
+        jumpCt=1; return;
+    }
+    if(isWallRun){
+        isWallRun=false; body.velocity.y=CFG.jumpF*.9;
+        const wn=new THREE.Vector3(wallNorm.x,0,wallNorm.z).normalize();
+        body.velocity.x=wn.x*CFG.wallJumpF*.6; body.velocity.z=wn.z*CFG.wallJumpF*.6;
+        jumpCt=1; return;
+    }
+    if(canMantle){tryMantle();return;}
+    if(canJump){ body.velocity.y=CFG.jumpF; canJump=false; jumpCt=1; }
+    else if(wallNear&&wallTmr>0){
+        body.velocity.y=CFG.wallJumpF;
+        body.velocity.x=wallNorm.x*CFG.wallJumpF*.8; body.velocity.z=wallNorm.z*CFG.wallJumpF*.8;
+        wallNear=false; wallTmr=0; jumpCt=1;
+    } else if(jumpCt===1){ body.velocity.y=CFG.djF; jumpCt=2; }
+    else if(jumpCt>=2){ isGlide=!isGlide; }
+}
+function tryMantle(){
+    if(!canMantle)return;
+    isMantling=true; mantleTmr=0; canJump=false;
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  MAIN LOOP
+// ═══════════════════════════════════════════════════════════════
+let lastT=0;
+renderer.setAnimationLoop(t=>{
+    const dt=Math.min((t-lastT)/1000,.05); lastT=t;
+    const time=t/1000;
+    if(!gameRunning){ renderer.render(scene,camera); return; }
+    world.step(1/60,dt,3);
+
+    if(wallTmr>0){wallTmr-=dt;if(wallTmr<=0)wallNear=false;}
+    if(comboTmr>0)comboTmr-=dt;
+    else if(combo>1){combo=1;document.getElementById('s-combo').textContent='×1';document.getElementById('s-combo').style.color='';}
+    if(isScoped)scopeT+=dt; else scopeT=0;
+
+    if(isReload){
+        reloadTmr+=dt;
+        document.getElementById('rfill').style.width=(reloadTmr/CFG.reloadT*100)+'%';
+        if(reloadTmr>=CFG.reloadT){
+            isReload=false; ammo=CFG.maxAmmo;
+            document.getElementById('a-cur').textContent=ammo;
+            document.getElementById('rtxt').style.display='none';
+            document.getElementById('rfill').style.width='0%';
+        }
+    }
+
+    if(isScoped){
+        swX+=(Math.sin(time*1.2)*CFG.scopeSway-swX)*.09;
+        swY+=(Math.cos(time*.85)*CFG.scopeSway-swY)*.09;
+        document.getElementById('sway').style.transform=`translate(${swX*380}px,${swY*380}px)`;
+    }
+
+    checkClimb();
+    document.getElementById('climb-prompt').classList.toggle('show',canMantle&&!isMantling&&!isClimbing);
+
+    const curShift=keys['ShiftLeft']||keys['ShiftRight'];
+
+    if(isMantling){
+        mantleTmr+=dt;
+        body.velocity.set(0,0,0);
+        body.position.x+=(mantleTarget.x-body.position.x)*0.35;
+        body.position.y+=(mantleTarget.y-body.position.y)*0.28;
+        body.position.z+=(mantleTarget.z-body.position.z)*0.35;
+        if(mantleTmr>.45||body.position.y>=mantleTarget.y-.2){
+            isMantling=false; canMantle=false; canJump=true; jumpCt=0;
+        }
+    } else if(isClimbing){
+        climbTmr+=dt;
+        body.velocity.x*=.1; body.velocity.z*=.1; body.velocity.y=CFG.climbSpd; body.linearDamping=0;
+        if(!wallNear||climbTmr>2.5||(keys['KeyS']||keys['ArrowDown'])){isClimbing=false;climbTmr=0;body.linearDamping=.88;}
+        if(canMantle&&climbTmr>.4){tryMantle();isClimbing=false;}
+    } else if(isWallRun){
+        wallRunTmr+=dt;
+        body.velocity.y=Math.max(body.velocity.y,-.5); body.linearDamping=.2;
+        const fwd=new THREE.Vector3(0,0,-1).applyEuler(new THREE.Euler(0,yaw,0,'YXZ'));
+        fwd.y=0; fwd.normalize();
+        body.velocity.x=fwd.x*CFG.wallRunSpd; body.velocity.z=fwd.z*CFG.wallRunSpd;
+        if(!wallNear||wallRunTmr>CFG.wallRunDur||canJump){isWallRun=false;wallRunTmr=0;body.linearDamping=.88;}
+    } else if(!isMantling){
+        isCrouch=(keys['ControlLeft']||keys['ControlRight'])&&!isSliding;
+
+        // ── SLIDE: Shift pressed while sprinting on ground ──
+        if(shiftJustPressed && canJump && !isSliding && slideCool<=0){
+            const fwd=new THREE.Vector3(0,0,-1).applyEuler(new THREE.Euler(0,yaw,0,'YXZ'));
+            const rt=new THREE.Vector3(1,0,0).applyEuler(new THREE.Euler(0,yaw,0,'YXZ'));
+            const inp=new THREE.Vector3();
+            if(keys['KeyW']||keys['ArrowUp'])inp.addScaledVector(fwd,1);
+            if(keys['KeyS']||keys['ArrowDown'])inp.addScaledVector(fwd,-1);
+            if(keys['KeyA']||keys['ArrowLeft'])inp.addScaledVector(rt,-1);
+            if(keys['KeyD']||keys['ArrowRight'])inp.addScaledVector(rt,1);
+            // Only slide if moving
+            if(inp.length()>0.1){
+                isSliding=true; slideTmr=CFG.slideDur;
+                slideDir.copy(inp).normalize();
+            }
+        }
+        shiftJustPressed=false;
+
+        if(isSliding){
+            slideTmr-=dt; slideCool=CFG.slideCool;
+            const f=CFG.slideF*(Math.max(0,slideTmr)/CFG.slideDur);
+            body.velocity.x=slideDir.x*f; body.velocity.z=slideDir.z*f;
+            if(slideTmr<=0||!canJump)isSliding=false;
+        } else {
+            const spd=isCrouch?CFG.crouchSpd:curShift?CFG.sprintSpd:CFG.walkSpd;
+            const fwd=new THREE.Vector3(0,0,-1).applyEuler(new THREE.Euler(0,yaw,0,'YXZ'));
+            const rt=new THREE.Vector3(1,0,0).applyEuler(new THREE.Euler(0,yaw,0,'YXZ'));
+            const inp=new THREE.Vector3();
+            if(keys['KeyW']||keys['ArrowUp'])inp.addScaledVector(fwd,1);
+            if(keys['KeyS']||keys['ArrowDown'])inp.addScaledVector(fwd,-1);
+            if(keys['KeyA']||keys['ArrowLeft'])inp.addScaledVector(rt,-1);
+            if(keys['KeyD']||keys['ArrowRight'])inp.addScaledVector(rt,1);
+            if(inp.length()>0){
+                inp.normalize().multiplyScalar(spd);
+                body.velocity.x=inp.x; body.velocity.z=inp.z;
+                if(!canJump&&wallNear&&wallTmr>0&&curShift&&!isWallRun&&jumpCt>0){isWallRun=true;wallRunTmr=0;}
+                if(wallNear&&wallTmr>0&&(keys['KeyW']||keys['ArrowUp'])&&!isWallRun){isClimbing=true;climbTmr=0;}
+            } else { body.velocity.x*=.82; body.velocity.z*=.82; }
+
+            if(isGlide&&body.velocity.y<0&&jumpCt>0) body.velocity.y+=14*dt;
+            if(!canJump&&jumpCt>=2&&curShift) isGlide=true;
+        }
+        if(slideCool>0)slideCool-=dt;
+    }
+
+    // Camera
+    const tH=isSliding||isCrouch?.15:isClimbing?.4:.5;
+    camera.position.set(body.position.x,body.position.y+tH,body.position.z);
+    gun.position.y=-0.21+Math.sin(time*8)*(canJump?.012:.003);
+    gun.position.x=isScoped?-.27:.27;
+
+    targets.forEach(tg=>tg.update(dt,time));
+
+    for(let i=parts.length-1;i>=0;i--){
+        const p=parts[i]; p.life-=dt; p.vel.y-=20*dt;
+        p.mesh.position.addScaledVector(p.vel,dt);
+        p.mesh.material.opacity=Math.max(0,p.life*2);
+        if(p.life<=0){scene.remove(p.mesh);parts.splice(i,1);}
+    }
+
+    document.getElementById('ms-air').classList.toggle('on',!canJump&&!isClimbing&&!isWallRun);
+    document.getElementById('ms-sl').classList.toggle('on',isSliding);
+    document.getElementById('ms-cl').classList.toggle('on',isClimbing||isWallRun||isMantling);
+    document.getElementById('ms-wj').classList.toggle('on',wallNear&&wallTmr>0&&!canJump);
+    document.getElementById('ms-gl').classList.toggle('on',isGlide);
+
+    renderer.render(scene,camera);
+});
+
+// ═══════════════════════════════════════════════════════════════
+//  MENU / GAME STATE (exposed globally)
+// ═══════════════════════════════════════════════════════════════
+window.startGame=function(mode){
+    clearScene();
+    document.getElementById('menu').style.display='none';
+    document.getElementById('hud').style.display='block';
+    if(mode==='custom'&&customMapData){
+        buildCustomMap(customMapData);
+    } else {
+        buildDefaultMap();
+    }
+    gameRunning=true;
+    document.body.requestPointerLock();
+};
+
+window.pauseGame=function(){
+    gameRunning=false;
+    document.exitPointerLock();
+    document.getElementById('pause').classList.add('show');
+};
+
+window.resumeGame=function(){
+    document.getElementById('pause').classList.remove('show');
+    gameRunning=true;
+    document.body.requestPointerLock();
+};
+
+window.goMenu=function(){
+    document.getElementById('pause').classList.remove('show');
+    document.getElementById('hud').style.display='none';
+    document.getElementById('menu').style.display='flex';
+    gameRunning=false;
+};
+
+window.openEditor=function(){
+    // Les deux fichiers doivent être dans le même dossier local.
+    // Ouvrir map_editor.html directement depuis votre explorateur de fichiers.
+    alert('Ouvrez map_editor.html directement depuis votre dossier.\nLes deux fichiers doivent être dans le même dossier pour communiquer.');
+};
+
+window.loadMapFile=function(input){
+    const file=input.files[0]; if(!file)return;
+    const reader=new FileReader();
+    reader.onload=e=>{
+        try{
+            const data=JSON.parse(e.target.result);
+            customMapData=data;
+            const info=document.getElementById('menu-map-info');
+            info.style.display='block';
+            info.textContent=`✓ MAP: "${data.name}" — ${data.objects?.length||0} objets`;
+            // Change play button
+            document.querySelector('.menu-btn.primary').textContent='▶ JOUER (MAP CHARGÉE)';
+            document.querySelector('.menu-btn.primary').onclick=()=>startGame('custom');
+        } catch(err){
+            alert('Fichier JSON invalide');
+        }
+    };
+    reader.readAsText(file);
+};
+
+// Module prêt — débloquer les boutons
+document.querySelectorAll('.menu-btn').forEach(b=>b.style.opacity='');
+const sub=document.getElementById('menu-sub');
+if(sub) sub.textContent='OPEN RANGE · MOVEMENT TRAINER';
+
+// Check URL param for map
+const urlParams=new URLSearchParams(location.search);
+if(urlParams.has('map')){
+    try{
+        customMapData=JSON.parse(decodeURIComponent(urlParams.get('map')));
+        document.querySelector('.menu-btn.primary').textContent='▶ JOUER (MAP ÉDITEUR)';
+        document.querySelector('.menu-btn.primary').onclick=()=>window.startGame('custom');
+        document.getElementById('menu-map-info').style.display='block';
+        document.getElementById('menu-map-info').textContent=`✓ MAP: "${customMapData.name}"`;
+    } catch(e){}
+}
+
+// Si un clic a eu lieu AVANT que le module soit prêt, on le rejoue maintenant
+if(window._pendingFile){
+    window.loadMapFile(window._pendingFile);
+    window._pendingFile=null;
+}
+if(window._pendingStart){
+    window.startGame(window._pendingStart);
+    window._pendingStart=null;
+}
+
+window.addEventListener('resize',()=>{
+    camera.aspect=innerWidth/innerHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize(innerWidth,innerHeight);
+});
