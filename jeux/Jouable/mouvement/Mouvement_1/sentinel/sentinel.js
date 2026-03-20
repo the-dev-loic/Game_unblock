@@ -349,13 +349,38 @@ const TYPE_TO_MAT={
     spawn:MATS.metal,
 };
 
+// Défauts par type pour décompresser le format compact v1.1
+const MAP_TYPE_DEFAULTS={
+    floor:         {height:0,w:1,d:1,bh:0.3,rot:0,color:'#5a8c38',amp:3,spd:0.8,interval:2.5},
+    floor_dirt:    {height:0,w:1,d:1,bh:0.3,rot:0,color:'#8d6440',amp:3,spd:0.8,interval:2.5},
+    floor_metal:   {height:0,w:1,d:1,bh:0.3,rot:0,color:'#606878',amp:3,spd:0.8,interval:2.5},
+    wall:          {height:0,w:1,d:1,bh:8,  rot:0,color:'#a09080',amp:3,spd:0.8,interval:2.5},
+    wall_metal:    {height:0,w:1,d:1,bh:8,  rot:0,color:'#607080',amp:3,spd:0.8,interval:2.5},
+    wall_wood:     {height:0,w:1,d:1,bh:6,  rot:0,color:'#a07840',amp:3,spd:0.8,interval:2.5},
+    platform:      {height:12,w:1,d:1,bh:0.4,rot:0,color:'#708090',amp:3,spd:0.8,interval:2.5},
+    pillar:        {height:0,w:1,d:1,bh:12, rot:0,color:'#888878',amp:3,spd:0.8,interval:2.5},
+    ramp:          {height:0,w:1,d:1,bh:1,  rot:0,color:'#909080',amp:3,spd:0.8,interval:2.5},
+    stairs:        {height:0,w:1,d:1,bh:8,  rot:0,color:'#909090',amp:3,spd:0.8,interval:2.5},
+    tower:         {height:0,w:1,d:1,bh:24, rot:0,color:'#888888',amp:3,spd:0.8,interval:2.5},
+    target_static: {height:0,w:1,d:1,bh:1,  rot:0,color:'#dd2222',amp:3,spd:0.8,interval:2.5},
+    target_moving: {height:0,w:1,d:1,bh:1,  rot:0,color:'#cc4400',amp:3,spd:0.8,interval:2.5},
+    target_popup:  {height:0,w:1,d:1,bh:1,  rot:0,color:'#aa5500',amp:3,spd:0.8,interval:2.5},
+    target_armored:{height:0,w:1,d:1,bh:1,  rot:0,color:'#448800',amp:3,spd:0.8,interval:2.5},
+    spawn:         {height:0,w:1,d:1,bh:1,  rot:0,color:'#2255cc',amp:3,spd:0.8,interval:2.5},
+    tree:          {height:0,w:1,d:1,bh:1,  rot:0,color:'#336622',amp:3,spd:0.8,interval:2.5},
+    boulder:       {height:0,w:1,d:1,bh:2,  rot:0,color:'#666666',amp:3,spd:0.8,interval:2.5},
+    cover:         {height:0,w:1,d:1,bh:2,  rot:0,color:'#555555',amp:3,spd:0.8,interval:2.5},
+};
+function expandMapObj(o){ return Object.assign({layer:0}, MAP_TYPE_DEFAULTS[o.type]||{}, o); }
+
 function buildCustomMap(data){
     const CELL=4;
     // Ground
     addBox(0,-2,0, data.mapW*CELL+20, 4, data.mapH*CELL+20, MATS.grass);
 
     let spawnSet=false;
-    for(const obj of data.objects){
+    for(const rawObj of data.objects){
+        const obj = expandMapObj(rawObj);
         const wx=(obj.gx+.5)*CELL - (data.mapW*CELL/2);
         const wz=(obj.gy+.5)*CELL - (data.mapH*CELL/2);
         const wy=(obj.height||0) + (obj.bh||1)/2;
@@ -366,7 +391,10 @@ function buildCustomMap(data){
             body.position.set(wx, (obj.height||0)+3, wz);
             spawnSet=true;
         } else if(obj.type.startsWith('target_')){
-            new Target(wx, (obj.height||0)+1.5, wz, obj.type,
+            // height = décalage vertical en cellules-éditeur (1 cellule = CELL=4 unités monde)
+            // On convertit: height éditeur → unités monde (1:1 car bh est déjà en unités monde)
+            const targetY = (obj.height || 0) + 1.5;
+            new Target(wx, targetY, wz, obj.type,
                 {amp:obj.amp||3, spd:obj.spd||.8, interval:obj.interval||2.5, phase:Math.random()*Math.PI*2});
         } else if(obj.type==='tree'){
             addCyl(wx,(obj.height||0)+3,wz, .5,7, mat);
