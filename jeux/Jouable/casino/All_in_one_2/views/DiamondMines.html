@@ -1,0 +1,11 @@
+<div>
+    <h2>💎 Diamond Mines</h2>
+
+    <button @click="startDiamondMines">Start</button>
+
+    <div class="grid grid-cols-5 gap-2">
+        <button v-for="(tile,i) in dmTiles" @click="clickTile(i)">
+            {{ tile.revealed ? (tile.isDiamond ? '💎' : '💣') : '?' }}
+        </button>
+    </div>
+</div>

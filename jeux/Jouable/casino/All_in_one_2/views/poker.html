@@ -1,0 +1,14 @@
+<div>
+    <h2>♠️ Poker</h2>
+
+    <button @click="pkDeal">Distribuer</button>
+
+    <div>
+        <p>Votre main:</p>
+        <span v-for="c in pkPlayerHand">{{ c.value }}{{ c.suit }}</span>
+    </div>
+
+    <button @click="pkFold">Fold</button>
+
+    <p>{{ pkMessage }}</p>
+</div>

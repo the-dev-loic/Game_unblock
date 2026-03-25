@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <title>Casino Royal</title>
+
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <link href="All_in_one_1.css" rel="stylesheet">
+</head>
+
+<body class="bg-gray-900 text-white">
+<div id="app">
+
+    <!-- NAV -->
+    <nav class="p-4 flex justify-between">
+        <button @click="currentPage='home'">CASINO ROYAL</button>
+
+        <div class="flex gap-4">
+            <button @click="currentPage='home'">Accueil</button>
+            <button @click="currentPage='roulette'">Roulette</button>
+            <button @click="currentPage='poker'">Poker</button>
+            <button @click="currentPage='chicken-road'">Chicken</button>
+            <button @click="currentPage='diamond-mines'">Mines</button>
+            <button @click="currentPage='blackjack'">Blackjack</button>
+        </div>
+
+        <div>{{ balance }} €</div>
+    </nav>
+
+    <!-- CONTENU -->
+    <main>
+        <div v-html="currentView"></div>
+    </main>
+
+</div>
+
+<script type="module" src="js/main.js"></script>
+</body>
+</html>
