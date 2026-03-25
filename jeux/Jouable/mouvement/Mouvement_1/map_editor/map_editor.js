@@ -368,12 +368,25 @@ function placeAt(gx, gy){
     if(existing) return;
 
     const def = OBJ_DEFS[currentTool] || {};
+
+    // Auto-calcul hauteur Y pour cibles/spawn posés sur des structures
+    let autoHeight = 0;
+    if(currentTool.startsWith('target_') || currentTool === 'spawn'){
+        const beneath = mapData.filter(o => o.gx===gx && o.gy===gy);
+        if(beneath.length > 0){
+            autoHeight = beneath.reduce((best, o) => {
+                const top = (o.height||0) + (o.bh||1);
+                return top > best ? top : best;
+            }, 0);
+        }
+    }
+
     const obj = {
         id: nextId++,
         type: currentTool,
         gx, gy,
         layer: activeLayer,
-        height: 0,
+        height: autoHeight,
         w: 1, d: 1,
         bh: def.defBH || 3,
         rot: 0,
@@ -384,7 +397,8 @@ function placeAt(gx, gy){
     mapData.push(obj);
     selectedId = obj.id;
     selectObj(obj.id);
-    setStatus('Objet placé', 'ok');
+    if(autoHeight > 0) setStatus('Objet placé (hauteur auto: ' + autoHeight + ')', 'ok');
+    else setStatus('Objet placé', 'ok');
 }
 
 function eraseAt(gx, gy){
@@ -538,13 +552,55 @@ function updateMapSize(){
 // ═══════════════════════════════════════════════════════════════
 //  SAVE / LOAD / EXPORT
 // ═══════════════════════════════════════════════════════════════
+// ── DEFAULTS PAR TYPE (valeurs omises si égales au défaut) ──────
+const TYPE_DEFAULTS = {
+    floor:          {height:0,w:1,d:1,rot:0,bh:0.3,color:'#5a8c38',amp:3,spd:0.8,interval:2.5,note:''},
+    floor_dirt:     {height:0,w:1,d:1,rot:0,bh:0.3,color:'#8d6440',amp:3,spd:0.8,interval:2.5,note:''},
+    floor_metal:    {height:0,w:1,d:1,rot:0,bh:0.3,color:'#606878',amp:3,spd:0.8,interval:2.5,note:''},
+    wall:           {height:0,w:1,d:1,rot:0,bh:8,  color:'#a09080',amp:3,spd:0.8,interval:2.5,note:''},
+    wall_metal:     {height:0,w:1,d:1,rot:0,bh:8,  color:'#607080',amp:3,spd:0.8,interval:2.5,note:''},
+    wall_wood:      {height:0,w:1,d:1,rot:0,bh:6,  color:'#a07840',amp:3,spd:0.8,interval:2.5,note:''},
+    platform:       {height:12,w:1,d:1,rot:0,bh:0.4,color:'#708090',amp:3,spd:0.8,interval:2.5,note:''},
+    pillar:         {height:0,w:1,d:1,rot:0,bh:12, color:'#888878',amp:3,spd:0.8,interval:2.5,note:''},
+    ramp:           {height:0,w:1,d:1,rot:0,bh:1,  color:'#909080',amp:3,spd:0.8,interval:2.5,note:''},
+    stairs:         {height:0,w:1,d:1,rot:0,bh:8,  color:'#909090',amp:3,spd:0.8,interval:2.5,note:''},
+    tower:          {height:0,w:1,d:1,rot:0,bh:24, color:'#888888',amp:3,spd:0.8,interval:2.5,note:''},
+    target_static:  {height:0,w:1,d:1,rot:0,bh:1,  color:'#dd2222',amp:3,spd:0.8,interval:2.5,note:''},
+    target_moving:  {height:0,w:1,d:1,rot:0,bh:1,  color:'#cc4400',amp:3,spd:0.8,interval:2.5,note:''},
+    target_popup:   {height:0,w:1,d:1,rot:0,bh:1,  color:'#aa5500',amp:3,spd:0.8,interval:2.5,note:''},
+    target_armored: {height:0,w:1,d:1,rot:0,bh:1,  color:'#448800',amp:3,spd:0.8,interval:2.5,note:''},
+    spawn:          {height:0,w:1,d:1,rot:0,bh:1,  color:'#2255cc',amp:3,spd:0.8,interval:2.5,note:''},
+    tree:           {height:0,w:1,d:1,rot:0,bh:1,  color:'#336622',amp:3,spd:0.8,interval:2.5,note:''},
+    boulder:        {height:0,w:1,d:1,rot:0,bh:2,  color:'#666666',amp:3,spd:0.8,interval:2.5,note:''},
+    cover:          {height:0,w:1,d:1,rot:0,bh:2,  color:'#555555',amp:3,spd:0.8,interval:2.5,note:''},
+};
+
+// Compresse un objet en omettant toutes les clés égales au défaut de son type
+function compressObj(obj){
+    const defs = TYPE_DEFAULTS[obj.type] || {};
+    const out = { id: obj.id, type: obj.type, gx: obj.gx, gy: obj.gy };
+    if(obj.layer !== 0) out.layer = obj.layer;
+    const keys = ['height','w','d','bh','rot','color','amp','spd','interval','note'];
+    for(const k of keys){
+        if(obj[k] !== defs[k]) out[k] = obj[k];
+    }
+    return out;
+}
+
+// Décompresse un objet en remplissant les valeurs manquantes depuis les défauts
+function expandObj(obj){
+    const defs = TYPE_DEFAULTS[obj.type] || {};
+    return Object.assign({ layer:0 }, defs, obj);
+}
+
 function getMapJSON(){
+    const compressed = mapData.map(compressObj);
     return JSON.stringify({
         name: document.getElementById('map-name-input').value || 'Map',
         mapW: MAP_W, mapH: MAP_H,
         cell: CELL,
-        objects: mapData,
-        meta: { created: new Date().toISOString(), version: '1.0' }
+        objects: compressed,
+        meta: { created: new Date().toISOString(), version: '1.1' }
     }, null, 2);
 }
 
@@ -616,14 +672,18 @@ function confirmModal(){
 }
 
 function loadFromJSON(data){
-    mapData = data.objects || [];
+    // Supporte l'ancien format (v1.0) et le nouveau compact (v1.1)
+    const rawObjs = data.objects || [];
+    mapData = rawObjs.map(expandObj);
     nextId = mapData.reduce((m,o)=>Math.max(m,o.id),0) + 1;
     MAP_W = data.mapW || 20; MAP_H = data.mapH || 20;
     document.getElementById('map-w').value = MAP_W;
     document.getElementById('map-h').value = MAP_H;
     document.getElementById('map-name-input').value = data.name || 'Map';
     selectedId = null; selectObj(null);
-    setStatus('Map chargée !', 'ok'); render();
+    const v = data.meta?.version || '1.0';
+    setStatus(`Map chargée ! (v${v}, ${mapData.length} objets)`, 'ok');
+    render();
 }
 
 // Drag-and-drop JSON file
@@ -884,4 +944,3 @@ window.render=function(){
     // Seulement si la vue 3D est active ET Three.js est initialisé
     if(viewMode==='3d' && THREE3 && r3 && s3 && c3) rebuild3D();
 };
-
