@@ -9,9 +9,9 @@ const menuData = {
 
             "chess a 2": "Jouable/chess/chess_1/chess_1.html",
 
-            "Combat a 2": "Jouable/combat_2_joueur/fonctionnel/C-2-j.html",
+            "Combat a 2": "Jouable/combat_2_joueur/C-2-J/C-2-j.html",
 
-            "cookie_clicker ": "Jouable/cookie/cookie_clicker_1/cookie_clicker_1.html",
+            "cookie_clicker ": "Jouable/cookie_clicker/cookie_clicker_1/cookie_clicker_1.html",
 
             "geometry dash": "Jouable/geometry_dash/geometry_dash_1/geometry_dash_1.html",
 
@@ -24,7 +24,7 @@ const menuData = {
         },
     "aim Trainer":{
         "Aim trainer apex ":"Jouable/aim_trainer/aim_trainer_3/aim_trainer_3.html",
-        "Aim trainer base ":"Jouable/aim trainer/aim_trainer_1/aim_trainer_1.html",
+        "Aim trainer base ":"Jouable/aim_trainer/aim_trainer_1/aim_trainer_1.html",
         "Aim trainer v4":"Jouable/aim_trainer/aim_trainer_4/aim_trainer_4.html"
     },
 
@@ -56,7 +56,7 @@ const menuData = {
         "cookie_clicker": "Jouable/cookie_clicker/cookie_clicker_1/cookie_clicker_1.html"
     },
     "geometry_dash": {
-        "geometry_dash": "geometry_dash/geometry_dash_1/geometry_dash_1.html"
+        "geometry_dash": "Jouable/geometry_dash/geometry_dash_1/geometry_dash_1.html"
     },
 
     "shooter": {
@@ -66,10 +66,6 @@ const menuData = {
                 "Shooter 3 ": "Jouable/shooter/Shooter_3/shooter_3.html",
                 "Shooter 5": "Jouable/shooter/Shooter_5/shooter_5.html"
             },
-
-        "simulation": {
-            "jeux_chat.html": "shooter/simulation/jeux_chat.html"
-        }
     },
     "snake": {
         "snake.html": "Jouable/snake/snake_1/snake_1.html",

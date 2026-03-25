@@ -1,0 +1,11 @@
+<div>
+    <h2>🎡 Roulette</h2>
+
+    <p>Mise totale: {{ rlTotalBet }} €</p>
+
+    <button @click="rlSpin">SPIN</button>
+
+    <p v-if="rlResult !== null">
+        Résultat: {{ rlResult }}
+    </p>
+</div>
