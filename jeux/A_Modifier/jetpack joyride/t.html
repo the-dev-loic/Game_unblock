@@ -1,0 +1,334 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <title>Jetpack Joyride - Simple</title>
+    <style>
+        html, body {
+            margin: 0;
+            padding: 0;
+            background: #0a0a12;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: 'Trebuchet MS', Arial, sans-serif;
+        }
+        #wrap {
+            position: relative;
+        }
+        canvas {
+            display: block;
+            background: #1a1a2e;
+            border-radius: 6px;
+        }
+        #ui {
+            position: absolute;
+            top: 10px;
+            left: 15px;
+            color: #fff;
+            font-size: 20px;
+            text-shadow: 2px 2px 3px rgba(0,0,0,0.8);
+        }
+        #speedBadge {
+            position: absolute;
+            top: 10px;
+            right: 15px;
+            color: #ffd700;
+            font-size: 16px;
+            text-shadow: 2px 2px 3px rgba(0,0,0,0.8);
+        }
+        #overlay {
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.8);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            text-align: center;
+            border-radius: 6px;
+        }
+        #overlay h1 {
+            font-size: 36px;
+            margin: 0 0 10px 0;
+            color: #ffd700;
+        }
+        #overlay p {
+            font-size: 16px;
+            margin: 5px 0;
+            color: #ccc;
+        }
+        #overlay button {
+            margin-top: 18px;
+            padding: 10px 28px;
+            font-size: 18px;
+            background: #ff5e3a;
+            border: none;
+            border-radius: 8px;
+            color: white;
+            cursor: pointer;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+<div id="wrap">
+    <canvas id="game" width="760" height="420"></canvas>
+    <div id="ui">
+        <div>Distance : <span id="dist">0</span> m</div>
+        <div>Pièces : <span id="coins">0</span></div>
+    </div>
+    <div id="speedBadge">Vitesse x<span id="speedVal">1.0</span></div>
+    <div id="overlay">
+        <h1 id="overlayTitle">JETPACK JOYRIDE</h1>
+        <p id="overlaySub">Maintiens ESPACE ou clique pour voler. Évite les obstacles rouges. La vitesse augmente avec la distance !</p>
+        <button id="startBtn">Jouer</button>
+    </div>
+</div>
+
+<script>
+    const canvas = document.getElementById('game');
+    const ctx = canvas.getContext('2d');
+    const W = canvas.width, H = canvas.height;
+
+    const distEl = document.getElementById('dist');
+    const coinsEl = document.getElementById('coins');
+    const speedValEl = document.getElementById('speedVal');
+    const overlay = document.getElementById('overlay');
+    const overlayTitle = document.getElementById('overlayTitle');
+    const overlaySub = document.getElementById('overlaySub');
+    const startBtn = document.getElementById('startBtn');
+
+    // --- réglages simples et modérés ---
+    const GRAVITY = 0.22;
+    const THRUST = -0.35;
+    const MAX_VY = 5;
+
+    // vitesse de défilement progressive
+    const BASE_SCROLL_SPEED = 1.3;   // vitesse de départ
+    const MAX_SCROLL_SPEED = 10;    // vitesse plafond
+    const SPEED_RAMP_RATE = 0.1; // à quelle vitesse la difficulté monte (par frame, par mètre parcouru)
+
+    const OBSTACLE_GAP_MIN = 260;   // distance minimale (px) entre 2 obstacles
+    const OBSTACLE_GAP_MAX = 400;
+
+    let player, obstacles, coins, particles, flying, running, distance, coinCount, nextObstacleX, scrollSpeed;
+
+    function initGame() {
+        player = { x: 110, y: H/2, w: 34, h: 44, vy: 0 };
+        obstacles = [];
+        coins = [];
+        particles = [];
+        flying = false;
+        running = false;
+        distance = 0;
+        coinCount = 0;
+        scrollSpeed = BASE_SCROLL_SPEED;
+        nextObstacleX = W + 500; // premier obstacle loin, temps de s'habituer
+        distEl.textContent = "0";
+        coinsEl.textContent = "0";
+        speedValEl.textContent = "1.0";
+    }
+    initGame();
+
+    function startGame() {
+        initGame();
+        running = true;
+        overlay.style.display = "none";
+        requestAnimationFrame(loop);
+    }
+
+    startBtn.addEventListener('click', startGame);
+
+    // contrôles
+    function setFlying(v) { flying = v; }
+    window.addEventListener('keydown', e => {
+        if (e.code === 'Space') { e.preventDefault(); setFlying(true); }
+    });
+    window.addEventListener('keyup', e => {
+        if (e.code === 'Space') setFlying(false);
+    });
+    canvas.addEventListener('mousedown', () => setFlying(true));
+    window.addEventListener('mouseup', () => setFlying(false));
+    canvas.addEventListener('touchstart', e => { e.preventDefault(); setFlying(true); });
+    window.addEventListener('touchend', () => setFlying(false));
+
+    function spawnObstacle(x) {
+        // un simple bloc rectangulaire, en haut ou en bas, avec un passage large
+        const fromTop = Math.random() < 0.5;
+        const gapSize = 170; // passage large = facile à éviter
+        const gapPos = 60 + Math.random() * (H - 120 - gapSize);
+        obstacles.push({
+            x: x,
+            topH: gapPos,
+            gapY: gapPos,
+            gapH: gapSize,
+            w: 26,
+            passed: false
+        });
+        // une pièce placée dans le passage
+        if (Math.random() < 0.7) {
+            coins.push({ x: x + 13, y: gapPos + gapSize/2, r: 9, taken: false });
+        }
+    }
+
+    function rectsOverlap(ax, ay, aw, ah, bx, by, bw, bh) {
+        return ax < bx + bw && ax + aw > bx && ay < by + bh && ay + ah > by;
+    }
+
+    function update() {
+        // la vitesse augmente progressivement avec la distance parcourue, jusqu'au plafond
+        scrollSpeed = Math.min(MAX_SCROLL_SPEED, BASE_SCROLL_SPEED + distance * SPEED_RAMP_RATE);
+        speedValEl.textContent = (scrollSpeed / BASE_SCROLL_SPEED).toFixed(1);
+
+        distance += scrollSpeed / 10;
+        distEl.textContent = Math.floor(distance);
+
+        // physique joueur
+        player.vy += flying ? THRUST : GRAVITY;
+        player.vy = Math.max(-MAX_VY, Math.min(MAX_VY, player.vy));
+        player.y += player.vy;
+        if (player.y - player.h/2 < 8) { player.y = 8 + player.h/2; player.vy = 0; }
+        if (player.y + player.h/2 > H - 8) { player.y = H - 8 - player.h/2; player.vy = 0; }
+
+        // particules du jetpack
+        if (flying) {
+            particles.push({
+                x: player.x - player.w/2, y: player.y + 10,
+                vx: -1.5, vy: (Math.random()-0.5)*1.5,
+                life: 18, color: Math.random()<0.5 ? '#ff9d00' : '#ff5e3a'
+            });
+        }
+        particles.forEach(p => { p.x += p.vx; p.y += p.vy; p.life--; });
+        particles = particles.filter(p => p.life > 0);
+
+        // avancer les obstacles / pièces (à la vitesse actuelle)
+        obstacles.forEach(o => o.x -= scrollSpeed);
+        coins.forEach(c => c.x -= scrollSpeed);
+        obstacles = obstacles.filter(o => o.x + o.w > -20);
+        coins = coins.filter(c => c.x > -20 && !c.taken);
+
+        // générer le prochain obstacle
+        nextObstacleX -= scrollSpeed;
+        if (nextObstacleX <= W) {
+            spawnObstacle(W + 40);
+            nextObstacleX = W + (OBSTACLE_GAP_MIN + Math.random() * (OBSTACLE_GAP_MAX - OBSTACLE_GAP_MIN));
+        }
+
+        // collisions pièces
+        coins.forEach(c => {
+            const dx = c.x - player.x, dy = c.y - player.y;
+            if (Math.sqrt(dx*dx + dy*dy) < c.r + 16) {
+                c.taken = true;
+                coinCount++;
+                coinsEl.textContent = coinCount;
+            }
+        });
+
+        // collisions obstacles (bloc du haut + bloc du bas, passage libre entre les deux)
+        const px = player.x - player.w/2, py = player.y - player.h/2;
+        obstacles.forEach(o => {
+            const hitTop = rectsOverlap(px, py, player.w, player.h, o.x, 0, o.w, o.gapY);
+            const hitBottom = rectsOverlap(px, py, player.w, player.h, o.x, o.gapY + o.gapH, o.w, H - (o.gapY + o.gapH));
+            if (hitTop || hitBottom) die();
+        });
+    }
+
+    function die() {
+        if (!running) return;
+        running = false;
+        for (let i = 0; i < 18; i++) {
+            particles.push({
+                x: player.x, y: player.y,
+                vx: (Math.random()-0.5)*6, vy: (Math.random()-0.5)*6,
+                life: 25, color: '#ff3333'
+            });
+        }
+        setTimeout(() => {
+            overlayTitle.textContent = "Perdu !";
+            overlaySub.textContent = "Distance : " + Math.floor(distance) + " m — Pièces : " + coinCount + " — Vitesse atteinte : x" + (scrollSpeed / BASE_SCROLL_SPEED).toFixed(1);
+            startBtn.textContent = "Rejouer";
+            overlay.style.display = "flex";
+        }, 300);
+    }
+
+    function drawBackground() {
+        ctx.fillStyle = '#1a1a2e';
+        ctx.fillRect(0, 0, W, H);
+        ctx.fillStyle = '#0a0a12';
+        ctx.fillRect(0, 0, W, 8);
+        ctx.fillRect(0, H-8, W, 8);
+    }
+
+    function drawPlayer() {
+        ctx.save();
+        ctx.translate(player.x, player.y);
+        // jetpack
+        ctx.fillStyle = '#666';
+        ctx.fillRect(-18, -16, 10, 30);
+        // corps
+        ctx.fillStyle = '#2b6cb0';
+        ctx.fillRect(-10, -6, 20, 20);
+        // tête
+        ctx.fillStyle = '#e6c199';
+        ctx.beginPath();
+        ctx.arc(0, -14, 9, 0, Math.PI*2);
+        ctx.fill();
+        ctx.restore();
+    }
+
+    function drawObstacles() {
+        obstacles.forEach(o => {
+            ctx.fillStyle = '#ff4444';
+            ctx.fillRect(o.x, 0, o.w, o.gapY);
+            ctx.fillRect(o.x, o.gapY + o.gapH, o.w, H - (o.gapY + o.gapH));
+        });
+    }
+
+    function drawCoins() {
+        coins.forEach(c => {
+            if (c.taken) return;
+            ctx.fillStyle = '#ffd700';
+            ctx.beginPath();
+            ctx.arc(c.x, c.y, c.r, 0, Math.PI*2);
+            ctx.fill();
+            ctx.strokeStyle = '#b8860b';
+            ctx.stroke();
+        });
+    }
+
+    function drawParticles() {
+        particles.forEach(p => {
+            ctx.globalAlpha = Math.max(0, p.life / 20);
+            ctx.fillStyle = p.color;
+            ctx.beginPath();
+            ctx.arc(p.x, p.y, 4, 0, Math.PI*2);
+            ctx.fill();
+        });
+        ctx.globalAlpha = 1;
+    }
+
+    function draw() {
+        drawBackground();
+        drawObstacles();
+        drawCoins();
+        drawParticles();
+        if (running) drawPlayer();
+    }
+
+    function loop() {
+        if (running) {
+            update();
+            draw();
+            requestAnimationFrame(loop);
+        } else {
+            draw();
+        }
+    }
+
+    draw();
+</script>
+</body>
+</html>
